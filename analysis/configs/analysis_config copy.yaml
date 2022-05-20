@@ -1,0 +1,124 @@
+days_recalculation_experiments: 5  # prod mode (Optional[int])
+test_experiment_ids:  # test mode (Optional[List[str]])
+  - f19_freq19_points_balance
+  - X-19-39-Rusagro-Mayonaisse-b
+
+fin_params:
+  points_redemption_rate: 0.87
+  opex: 0.066
+
+database_params:
+  hive_guests_metrics_table: tc5_analytics_sanbox.post_analysis_guests_metrics
+  postgre_period_effects_table: post_analysis_period_effects
+  postgre_preperiod_tests_table: post_analysis_preperiod_tests
+
+  test_hive_guests_metrics_table: tc5_analytics_sanbox.post_analysis_guests_metrics_test
+  test_postgre_period_effects_table: post_analysis_period_effects_test
+  test_postgre_preperiod_tests_table: post_analysis_preperiod_tests_test
+
+preperiod_stat_test_params:
+  pvalue: 0.05
+  map_test_to_metrics:
+    ttest_ind:
+      - count_visits
+      - rto_novat
+      - quantity
+      - fm
+      - cm
+      - ebitda
+      - cat_count_visits
+      - cat_rto_novat
+      - cat_quantity
+      - cat_fm
+      - cat_cm
+      - cat_ebitda
+      - plu_count_visits
+      - plu_rto_novat
+      - plu_quantity
+      - plu_fm
+      - plu_cm
+      - plu_ebitda
+      - points_delta_redemption
+    chisquare:
+      - count_unique_visits
+      - cat_count_unique_visits
+      - plu_count_unique_visits
+
+  map_experiment_types_to_divergence_metrics:
+    check:
+      - count_visits
+      - rto_novat
+      - fm
+    cat_plu:
+      - count_visits
+      - rto_novat
+      - fm
+      - cat_count_visits
+      - cat_rto_novat
+      - cat_fm
+
+period_stat_test_params:
+  confidence_level: 0.9
+  bootstrap_iterations_number: 1000
+  metrics:
+    - count_visits
+    - count_unique_visits
+    - rto_novat
+    - quantity
+    - fm
+    - fm_minus_comm
+    - cm  # commercial margin
+    - cm_wo_supplier_fin
+    - ebitda
+    - ebitda_wo_supplier_fin
+    - cat_count_visits
+    - cat_count_unique_visits
+    - cat_rto_novat
+    - cat_quantity
+    - cat_fm
+    - cat_fm_minus_comm
+    - cat_cm
+    - cat_cm_wo_supplier_fin
+    - cat_ebitda
+    - cat_ebitda_wo_supplier_fin
+    - plu_count_visits
+    - plu_count_unique_visits
+    - plu_rto_novat
+    - plu_quantity
+    - plu_fm
+    - plu_fm_minus_comm
+    - plu_cm
+    - plu_cm_wo_supplier_fin
+    - plu_ebitda
+    - plu_ebitda_wo_supplier_fin
+
+fraud_filter_params:
+  max_rto_per_week: 20000
+  max_count_visits_per_week: 30
+  min_fm_share_in_rto: -0.5
+
+communication_costs_periods:
+  2020-01-01:
+    sms: 1.16
+    viber: 0.8
+    email: 0.0083
+  2020-12-15:
+    sms: 1.28
+    viber: 0.8
+    email: 0.0083
+  2021-01-01:
+    sms: 1.33
+    viber: 1.1
+    email: 0.0083
+  2021-02-01:
+    sms: 1.38
+    viber: 1.1
+    email: 0.0083
+  2021-07-01:
+    sms: 1.35
+    viber: 1.35
+    email: 0.0083
+  2021-08-01:
+    sms: 1.41
+    viber: 1.32
+    email: 0.0083
