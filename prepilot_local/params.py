@@ -42,7 +42,7 @@ class PrepilotParams:
         if self.use_buckets:
             transformations = [self.variance_reduction, ABTest.bucketing]
         else:
-            transformations = [self.variance_reduction, self.stat_test]
+            transformations = [self.variance_reduction]
         transformations = list(filter(None, transformations))
         self.transformations = Pipeline(transformations)
 
