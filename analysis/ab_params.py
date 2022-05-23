@@ -1,10 +1,16 @@
 from __future__ import annotations
-from typing import List, Any, Callable
+from typing import List, Tuple, Any, Callable
 from pydantic.dataclasses import dataclass
 from pydantic import validator, Field
 import numpy as np
 
-@dataclass
+class ValidationConfig:
+    validate_assignment = True
+    #error_msg_templates = {
+    #    'value_error.any_str.max_length': 'max_length:{limit_value}',
+    #}
+
+@dataclass(config=ValidationConfig)
 class MetricParams:
     type: str = 'solid'
     name: str = 'mean'
@@ -15,7 +21,7 @@ class MetricParams:
         assert type in ['solid', 'ratio']
         return type
 
-@dataclass
+@dataclass(config=ValidationConfig)
 class DataParams:
     n_rows: int = 500
     path: str = '../notebooks/ab_data.csv'
@@ -30,23 +36,23 @@ class DataParams:
     predictors_prev: List[str] = Field(default=['weight_prev'])
     is_grouped: bool = True
 
-@dataclass
+@dataclass(config=ValidationConfig)
 class ResultParams:
     to_csv: bool = True
     csv_path: str = '/app/data/internal/guide/solid_mde.csv'
 
-@dataclass
+@dataclass(config=ValidationConfig)
 class SplitterParams:
     split_rate: float = 0.5
 
-@dataclass
+@dataclass(config=ValidationConfig)
 class SimulationParams:
     n_iter: int = 100
     split_rates: List[float] = Field(default_factory=list)
     vars: List[float] = Field(default=[0, 1, 2, 3, 4, 5])
     extra_params: List = Field(default_factory=list)
 
-@dataclass
+@dataclass(config=ValidationConfig)
 class BootstrapParams:
     metric: Callable[[Any], float] = np.mean
     n_boot_samples: int = 200
@@ -67,12 +73,12 @@ class BootstrapParams:
             if self.metric=='median':
                 self.metric=np.median
 
-@dataclass 
+@dataclass(config=ValidationConfig)
 class HypothesisParams:
     alpha: float = 0.05
     beta: float = 0.2
     alternative: str = 'two-sided' # less, greater, two-sided
-    split_ratios: List[float] = Field(default=[0.5, 0.5])
+    split_ratios: Tuple[float, float]= Field(default=(0.5, 0.5))
     strategy: str = 'simple_test'
     strata: str = 'country'
     strata_weights: dict = Field(default={'US': 0.8, 'UK': 0.2})
@@ -100,6 +106,7 @@ class HypothesisParams:
     @validator("split_ratios", always=True)
     @classmethod
     def split_validator(cls, split_ratios: float):
+        assert len(split_ratios)==2
         assert sum(split_ratios)==1.0
         return split_ratios
 
