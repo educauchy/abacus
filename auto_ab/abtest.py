@@ -442,6 +442,7 @@ class ABTest:
             stat, pvalue = ttest_ind(X, Y, equal_var=False, alternative=self.config['alternative'])
         elif self.config['metric_name'] == 'median':
             stat, pvalue = mannwhitneyu(X, Y, alternative=self.config['alternative'])
+
         if pvalue <= self.config['alpha']:
             test_result = 1
 
@@ -474,7 +475,7 @@ class ABTest:
             def metric(X: np.array):
                 modes, _ = mode(X)
                 return sum(modes) / len(modes)
-            test_result = self.test_hypothesis_boot_confint()
+            stat, pvalue, test_result = self.test_hypothesis_boot_confint()
 
         result = {
             'stat': None,
@@ -519,7 +520,7 @@ class ABTest:
         }
         return result
 
-    def test_hypothesis_boot_est(self) -> float:
+    def test_hypothesis_boot_est(self) -> stat_test_typing:
         """
         Perform bootstrap confidence interval with
         :returns: Type I error rate
@@ -547,7 +548,16 @@ class ABTest:
                 criticals[1] += 1
         false_positive = min(criticals) / pd_metric_diffs.shape[0]
 
-        return false_positive
+        test_result: int = 0 # 0 - cannot reject H0, 1 - reject H0
+        if false_positive <= self.config['alpha']:
+            test_result = 1
+
+        result = {
+            'stat': None,
+            'p-value': false_positive,
+            'result': test_result
+        }
+        return result
 
     def test_hypothesis_boot_confint(self) -> stat_test_typing:
         """
