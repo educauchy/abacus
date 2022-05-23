@@ -12,10 +12,10 @@ from tqdm.auto import tqdm
 from splitter import Splitter
 from graphics import Graphics
 from variance_reduction import VarianceReduction
-from hyperopt import hp, fmin, tpe, Trials, space_eval
 
 
 metric_name_typing = Union[str, Callable[[np.array], Union[int, float]]]
+stat_test_typing = Dict[ str, Union[int, float] ]
 
 class ABTest:
     """Perform AB-test"""
@@ -212,28 +212,6 @@ class ABTest:
             self.config['treatment']      = config['treatment']
 
         # self.splitter: Splitter = None
-        # self.split_rates: List[float] = None
-        # self.increment_list: List[float] = None
-        # self.increment_extra: Dict[str, float] = None
-
-    def _add_increment(self, X: Union[pd.DataFrame, np.array] = None,
-                       inc_value: Union[float, int] = None) -> np.array:
-        """
-        Add constant increment to a list
-        :param X: Numpy array to modify
-        :param inc_value: Constant addendum to each value
-        :returns: Modified X array
-        """
-        if self.config['metric_type'] == 'solid':
-            return X + inc_value
-        elif self.config['metric_type'] == 'ratio':
-            X.loc[:, 'inced'] = X[self.config['numerator']] + inc_value
-            X.loc[:, 'diff'] = X[self.config['denominator']] - X[self.config['numerator']]
-            X.loc[:, 'rand_inc'] = np.random.randint(0, X['diff'] + 1, X.shape[0])
-            X.loc[:, 'numerator_new'] = X[self.config['numerator']] + X['rand_inc']
-
-            X[self.config['numerator']] = np.where(X['inced'] < X[self.config['denominator']], X['inced'], X['numerator_new'])
-            return X[[self.config['numerator'], self.config['denominator']]]
 
     def _split_data(self, split_rate: float) -> None:
         """
@@ -323,10 +301,6 @@ class ABTest:
 
         return (mean, var)
 
-    def set_increment(self, inc_var: List[float] = None, extra_params: Dict[str, float] = None) -> None:
-        self.config['increment_list']  = inc_var
-        self.config['increment_extra'] = extra_params
-
     def use_dataset(self, X: pd.DataFrame) -> None:
         """
         Put dataset for analysis
@@ -342,7 +316,7 @@ class ABTest:
         """
         return self._read_file(path)
 
-    def ratio_bootstrap(self, X: pd.DataFrame = None, Y: pd.DataFrame = None) -> int:
+    def ratio_bootstrap(self, X: pd.DataFrame = None, Y: pd.DataFrame = None) -> stat_test_typing:
         if X is None and Y is None:
             X = self.dataset[self.dataset[self.config['group_col']] == 'A']
             Y = self.dataset[self.dataset[self.config['group_col']] == 'B']
@@ -383,9 +357,14 @@ class ABTest:
         if ci_left > 0 or ci_right < 0: # left border of ci > 0 or right border of ci < 0
             test_result = 1
 
-        return test_result
+        result = {
+            'stat': None,
+            'p-value': None,
+            'result': test_result
+        }
+        return result
 
-    def ratio_taylor(self) -> int:
+    def ratio_taylor(self) -> stat_test_typing:
         """
         Calculate expectation and variance of ratio for each group
         and then use t-test for hypothesis testing
@@ -399,9 +378,14 @@ class ABTest:
         B_mean, B_var = self._taylor_params(Y)
         test_result: int = self._manual_ttest(A_mean, A_var, X.shape[0], B_mean, B_var, Y.shape[0])
 
-        return test_result
+        result = {
+            'stat': None,
+            'p-value': None,
+            'result': test_result
+        }
+        return result
 
-    def delta_method(self) -> int:
+    def delta_method(self) -> stat_test_typing:
         """
         Delta method with bias correction for ratios
         Source: https://arxiv.org/pdf/1803.06336.pdf
@@ -414,7 +398,12 @@ class ABTest:
         B_mean, B_var = self._delta_params(Y)
         test_result: int = self._manual_ttest(A_mean, A_var, X.shape[0], B_mean, B_var, Y.shape[0])
 
-        return test_result
+        result = {
+            'stat': None,
+            'p-value': None,
+            'result': test_result
+        }
+        return result
 
     def linearization(self) -> None:
         """
@@ -433,7 +422,7 @@ class ABTest:
             self.dataset = df_grouped
         self._linearize()
 
-    def test_hypothesis(self) -> Tuple[int, float, float]:
+    def test_hypothesis(self) -> stat_test_typing:
         """
         Perform Welch's t-test / Mann-Whitney test for means/medians
         :return: Tuple: (test result: 0 - cannot reject H0, 1 - reject H0,
@@ -456,9 +445,14 @@ class ABTest:
         if pvalue <= self.config['alpha']:
             test_result = 1
 
-        return (test_result, stat, pvalue)
+        result = {
+            'stat': stat,
+            'p-value': pvalue,
+            'result': test_result
+        }
+        return result
 
-    def test_hypothesis_buckets(self) -> int:
+    def test_hypothesis_buckets(self) -> stat_test_typing:
         """
         Perform buckets hypothesis testing
         :return: Test result: 1 - significant different, 0 - insignificant difference
@@ -482,10 +476,15 @@ class ABTest:
                 return sum(modes) / len(modes)
             test_result = self.test_hypothesis_boot_confint()
 
-        return test_result
+        result = {
+            'stat': None,
+            'p-value': None,
+            'result': test_result
+        }
+        return result
 
     def test_hypothesis_strat_confint(self, strata_col: str = '',
-                                    weights: Dict[str, float] = None) -> int:
+                                    weights: Dict[str, float] = None) -> stat_test_typing:
         """
         Perform stratification with confidence interval
         :return: Test result: 1 - significant different, 0 - insignificant difference
@@ -513,7 +512,12 @@ class ABTest:
         if ci_left > 0 or ci_right < 0: # left border of ci > 0 or right border of ci < 0
             test_result = 1
 
-        return test_result
+        result = {
+            'stat': None,
+            'p-value': None,
+            'result': test_result
+        }
+        return result
 
     def test_hypothesis_boot_est(self) -> float:
         """
@@ -545,7 +549,7 @@ class ABTest:
 
         return false_positive
 
-    def test_hypothesis_boot_confint(self) -> int:
+    def test_hypothesis_boot_confint(self) -> stat_test_typing:
         """
         Perform bootstrap confidence interval
         :returns: Ratio of rejected H0 hypotheses to number of all tests
@@ -569,7 +573,12 @@ class ABTest:
         if ci_left > 0 or ci_right < 0: # left border of ci > 0 or right border of ci < 0
             test_result = 1
 
-        return test_result
+        result = {
+            'stat': None,
+            'p-value': None,
+            'result': test_result
+        }
+        return result
 
     def test_boot_hypothesis(self) -> float:
         """
@@ -593,39 +602,6 @@ class ABTest:
         pvalue = T / self.config['n_boot_samples']
 
         return pvalue
-
-    def sample_size(self, std: float = None, effect_size: float = None,
-                    split_ratios: Tuple[float, float] = None) -> Tuple[int, int]:
-        """
-        Calculation of sample size for each test group
-        :param std: Standard deviation of a test metric
-        :param effect_size: Lift in metric
-        :param group_shares: Shares of A and B groups
-        :return: Number of observations needed in each group
-        """
-        control_share, treatment_share = split_ratios if split_ratios is not None else self.config['split_ratios']
-        if treatment_share == 0.5:
-            alpha: float = (1 - self.config['alpha'] / 2) if self.config['alternative'] == 'two-sided' else (1 - self.config['alpha'])
-            n_samples: int = round(2 * (t.ppf(alpha) + t.ppf(1 - self.config['beta'])) * std ** 2 / (effect_size ** 2), 0) + 1
-            return (n_samples, n_samples)
-        else:
-            alpha: float = (1 - self.config['alpha'] / 2) if self.config['alternative'] == 'two-sided' else (1 - self.config['alpha'])
-            n: int = round((((t.ppf(alpha) + t.ppf(1 - self.config['beta'])) * std ** 2 / (effect_size ** 2))) \
-                      / (treatment_share * control_share), 0) + 1
-            a_samples, b_samples = int(round(n * control_share, 0) + 1), int(round(n * treatment_share, 0) + 1)
-            return (a_samples, b_samples)
-
-    def mde(self, std: float = None, n_samples: int = None) -> float:
-        """
-        Calculate Minimum Detectable Effect using Margin of Error formula
-        :param std: Pooled standard deviatioin
-        :param n_samples: Number of samples for each group
-        :return: MDE, in absolute lift
-        """
-        alpha: float = (1 - self.config['alpha'] / 2) if self.config['alternative'] == 'two-sided' else (1 - self.config['alpha'])
-        mde: float = np.sqrt( 2 * (t.ppf(alpha) + t.ppf(1 - self.config['beta'])) * std / n_samples )
-        return mde
-
 
     def plot(self) -> None:
         a = self.__get_group('A')

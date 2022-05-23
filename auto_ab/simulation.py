@@ -3,14 +3,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import ttest_ind
-from typing import Optional, Dict, Tuple, List, Any, Callable
+from typing import Optional, Dict, Tuple, List, Any, Callable, Union
 from collections import defaultdict
+from hyperopt import hp, fmin, tpe, Trials, space_eval
 
 
 class Simulation:
-    # can be simulated:
-    # MDE, sample size, etc values
-    # MDE, sample size, etc tables
     def __init__(self, alpha: float = 0.05, beta: float = 0.2,
                  n_iter: int = 5000, stds: List[float] = None,
                  effect_sizes: List[float] = None,
@@ -22,6 +20,33 @@ class Simulation:
         self.effect_sizes = effect_sizes
         self.sample_sizes = sample_sizes
         self.mdes = mdes
+
+        self.split_rates: List[float] = None
+        self.increment_list: List[float] = None
+        self.increment_extra: Dict[str, float] = None
+
+    def _add_increment(self, X: Union[pd.DataFrame, np.array] = None,
+                       inc_value: Union[float, int] = None) -> np.array:
+        """
+        Add constant increment to a list
+        :param X: Numpy array to modify
+        :param inc_value: Constant addendum to each value
+        :returns: Modified X array
+        """
+        if self.config['metric_type'] == 'solid':
+            return X + inc_value
+        elif self.config['metric_type'] == 'ratio':
+            X.loc[:, 'inced'] = X[self.config['numerator']] + inc_value
+            X.loc[:, 'diff'] = X[self.config['denominator']] - X[self.config['numerator']]
+            X.loc[:, 'rand_inc'] = np.random.randint(0, X['diff'] + 1, X.shape[0])
+            X.loc[:, 'numerator_new'] = X[self.config['numerator']] + X['rand_inc']
+
+            X[self.config['numerator']] = np.where(X['inced'] < X[self.config['denominator']], X['inced'], X['numerator_new'])
+            return X[[self.config['numerator'], self.config['denominator']]]
+
+    def set_increment(self, inc_var: List[float] = None, extra_params: Dict[str, float] = None) -> None:
+        self.config['increment_list']  = inc_var
+        self.config['increment_extra'] = extra_params
 
     def sample_size_simulation(self):
         ss = []
@@ -194,6 +219,39 @@ class Simulation:
         best_params = space_eval(space, best)
         print('\nBest params')
         print(best_params)
+
+    def sample_size(self, std: float = None, effect_size: float = None,
+                    split_ratios: Tuple[float, float] = None) -> Tuple[int, int]:
+        """
+        Calculation of sample size for each test group
+        :param std: Standard deviation of a test metric
+        :param effect_size: Lift in metric
+        :param group_shares: Shares of A and B groups
+        :return: Number of observations needed in each group
+        """
+        control_share, treatment_share = split_ratios if split_ratios is not None else self.config['split_ratios']
+        if treatment_share == 0.5:
+            alpha: float = (1 - self.config['alpha'] / 2) if self.config['alternative'] == 'two-sided' else (1 - self.config['alpha'])
+            n_samples: int = round(2 * (t.ppf(alpha) + t.ppf(1 - self.config['beta'])) * std ** 2 / (effect_size ** 2), 0) + 1
+            return (n_samples, n_samples)
+        else:
+            alpha: float = (1 - self.config['alpha'] / 2) if self.config['alternative'] == 'two-sided' else (1 - self.config['alpha'])
+            n: int = round((((t.ppf(alpha) + t.ppf(1 - self.config['beta'])) * std ** 2 / (effect_size ** 2))) \
+                           / (treatment_share * control_share), 0) + 1
+            a_samples, b_samples = int(round(n * control_share, 0) + 1), int(round(n * treatment_share, 0) + 1)
+            return (a_samples, b_samples)
+
+    def mde(self, std: float = None, n_samples: int = None) -> float:
+        """
+        Calculate Minimum Detectable Effect using Margin of Error formula
+        :param std: Pooled standard deviatioin
+        :param n_samples: Number of samples for each group
+        :return: MDE, in absolute lift
+        """
+        alpha: float = (1 - self.config['alpha'] / 2) if self.config['alternative'] == 'two-sided' else (1 - self.config['alpha'])
+        mde: float = np.sqrt( 2 * (t.ppf(alpha) + t.ppf(1 - self.config['beta'])) * std / n_samples )
+        return mde
+
 
 if __name__ == '__main__':
     stds = list(range(10, 30, 10))
