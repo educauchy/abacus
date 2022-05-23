@@ -12,51 +12,48 @@ from tqdm.auto import tqdm
 #from graphics import Graphics
 from analysis.variance_reduction import VarianceReduction
 #from hyperopt import hp, fmin, tpe, Trials, space_eval
+from analysis.ab_params import ABTestParams
 
 metric_name_typing = Union[str, Callable[[np.array], Union[int, float]]]
 
 class ABTest:
     """Perform AB-test"""
-    def __init__(self, dataset: pd.DataFrame, config: Dict[Any, Any] = None,
-                 startup_config: bool = False) -> None:
-        if config is not None:
-            self.dataset = dataset 
-            self.startup_config = startup_config
-            self.config: Dict[Any, Any] = {}
-            self.config_load(config)
-        else:
-            raise Exception('You must pass config file')
-
+    def __init__(self, dataset: pd.DataFrame,
+                 params:ABTestParams = ABTestParams(),
+                 ) -> None:
+        self.dataset = dataset 
+        self.params = params
+    """
     @property
     def beta(self) -> float:
-        return self.config.beta
+        return self.ab_config.hypothesis_params.beta
 
     @beta.setter
     def beta(self, value: float) -> None:
-        if 0 <= value <= 1:
-            self.config.beta = value
-        else:
-            raise Exception('Beta must be inside interval [0, 1]. Your input: {}.'.format(value))
+        #if 0 <= value <= 1:
+        self.ab_config.hypothesis_params.beta = value
+        #else:
+        #    raise Exception('Beta must be inside interval [0, 1]. Your input: {}.'.format(value))
 
     @property
     def split_ratios(self) -> Tuple[float, float]:
-        return self.config.split_ratios
+        return self.ab_config.hypothesis_params.split_ratios
 
     @split_ratios.setter
     def split_ratios(self, value: Tuple[float, float]) -> None:
         if isinstance(value, tuple) and len(value) == 2 and sum(value) == 1:
-            self.config.split_ratios = value
+            self.ab_config.hypothesis_params.split_ratios = value
         else:
             raise Exception('Split ratios must be a tuple with two shares which has a sum of 1. Your input: {}.'.format(value))
 
     @property
     def alternative(self) -> str:
-        return self.config.alternative
+        return self.ab_config.hypothesis_params.split_ratios
 
     @alternative.setter
     def alternative(self, value: str) -> None:
         if value in ['less', 'greater', 'two-sided']:
-            self.config.alternative = value
+            self.ab_config.hypothesis_params.split_ratios = value
         else:
             raise Exception("Alternative must be either 'less', 'greater', or 'two-sided'. Your input: '{}'.".format(value))
 
@@ -125,7 +122,8 @@ class ABTest:
             self.config.group_col = value
         else:
             raise Exception('Group column name must be presented in dataset. Your input: {}.'.format(value))
-
+    """
+    """
     def config_load(self, config: Dict[Any, Any]) -> None:
         if self.startup_config:
             self.config['alpha']          = config['hypothesis']['alpha']
@@ -193,7 +191,8 @@ class ABTest:
         # self.split_rates: List[float] = None
         # self.increment_list: List[float] = None
         # self.increment_extra: Dict[str, float] = None
-
+    """
+    
     def load_dataset(self, path: str = '') -> pd.DataFrame:
         """
         Load dataset for analysis
@@ -218,8 +217,8 @@ class ABTest:
             return pd.read_excel(path, encoding='utf8')
     
     def __get_group(self, group_label: str = 'A'):
-        group = self.dataset.loc[self.dataset[self.config['group_col']] == group_label, \
-                                            self.config['target']].to_numpy()
+        group = self.dataset.loc[self.dataset[self.params.data_params.group_col] == group_label, \
+                                            self.params.data_params.target].to_numpy()
         return group
 
     def test_hypothesis_boot_confint(self, metric: Optional[Callable[[Any], float]] = None) -> int:
@@ -230,18 +229,18 @@ class ABTest:
         :param metric: Custom metric (mean, median, percentile (1, 2, ...), etc
         :returns: Ratio of rejected H0 hypotheses to number of all tests
         """
-        X = self.config['control']
-        Y = self.config['treatment']
+        X = self.params.data_params.control
+        Y = self.params.data_params.treatment
 
         metric_diffs: List[float] = []
-        for _ in tqdm(range(self.config['n_boot_samples'])):
+        for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
             y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
             metric_diffs.append( metric(x_boot) - metric(y_boot) )
         pd_metric_diffs = pd.DataFrame(metric_diffs)
 
-        left_quant = self.config['alpha'] / 2
-        right_quant = 1 - self.config['alpha'] / 2
+        left_quant = self.params.hypothesis_params.alpha / 2
+        right_quant = 1 - self.params.hypothesis_params.alpha/ 2
         ci = pd_metric_diffs.quantile([left_quant, right_quant])
         ci_left, ci_right = float(ci.iloc[0]), float(ci.iloc[1])
 
@@ -254,49 +253,49 @@ class ABTest:
     def cuped(self):
         vr = VarianceReduction()
         result_df = vr.cuped(self.dataset,
-                            target=self.config['target'],
-                            groups=self.config['group_col'],
-                            covariate=self.config['covariate'])
+                            target=self.params.data_params.target,
+                            groups=self.params.data_params.group_col,
+                            covariate=self.params.data_params.covariate)
 
         #self.config['dataset'] = result_df.to_dict()
         self.dataset = result_df
 
-        self.config['control'] = self.__get_group('A')
-        self.config['treatment'] = self.__get_group('B')
+        self.params.data_params.control = self.__get_group('A')
+        self.params.data_params.treatment = self.__get_group('B')
 
-        return ABTest(result_df, self.config)
+        return ABTest(result_df, self.params)
 
     def cupac(self):
         vr = VarianceReduction()
         result_df = vr.cupac(self.dataset,
-                               target_prev=self.config['target_prev'],
-                               target_now=self.config['target'],
-                               factors_prev=self.config['predictors_prev'],
-                               factors_now=self.config['predictors'],
-                               groups=self.config['group_col'])
+                               target_prev=self.params.data_params.target_prev,
+                               target_now=self.params.data_params.target,
+                               factors_prev=self.params.data_params.predictors_prev,
+                               factors_now=self.params.data_params.predictors,
+                               groups=self.params.data_params.group_col)
         self.dataset = result_df
 
-        self.config['control'] = self.__get_group('A')
-        self.config['treatment'] = self.__get_group('B')
+        self.params.data_params.control = self.__get_group('A')
+        self.params.data_params.treatment = self.__get_group('B')
 
         #self.config['dataset'] = result_df.to_dict()
-        return ABTest(result_df, self.config)
+        return ABTest(result_df, self.params)
 
     def __metric_calc(self, X: Union[List[Any], np.array]):
-        if self.config['metric_name'] == 'mean':
+        if self.params.metric_params.name == 'mean':
             return np.mean(X)
-        elif self.config['metric_name'] == 'median':
+        elif self.params.metric_params.name == 'median':
             return np.median(X)
-        elif self.config['metric_name'] == 'custom':
-            return self.config['metric'](X)
+        elif self.params.metric_params.name == 'custom':
+            return self.params.metric_params.name(X)
 
     def __bucketize(self, X: pd.DataFrame):
         np.random.shuffle(X)
-        X_new = np.array([ self.__metric_calc(x) for x in np.array_split(X, self.config['n_buckets']) ])
+        X_new = np.array([ self.__metric_calc(x) for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
         return X_new
 
     def bucketing(self):
-        self.config['control']   = self.__bucketize(self.config['control'])
-        self.config['treatment'] = self.__bucketize(self.config['treatment'])
+        self.params.data_params.control = self.__bucketize(self.params.data_params.control)
+        self.params.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
 
-        return ABTest(self.dataset, self.config)
+        return ABTest(self.dataset, self.params)

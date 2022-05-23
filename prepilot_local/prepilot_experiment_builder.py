@@ -9,6 +9,7 @@ from prepilot_local.abstract_experiment_builder import AbstractExperimentBuilder
 from prepilot_local.prepilot_split_builder import PrepilotSplitBuilder
 from prepilot_local.params import PrepilotParams
 from analysis.abtest import ABTest
+from analysis.ab_params import ABTestParams
 
 
 class PrepilotExperimentBuilder(AbstractExperimentBuilder):
@@ -17,7 +18,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
 
     def __init__(self,
                  guests: DataFrame,
-                 abtest_params,
+                 abtest_params: ABTestParams,
                  experiment_params: PrepilotParams,
                  stratification_params: SplitBuilderParams):
         """
@@ -55,14 +56,14 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         guests_with_splits[split_column] = (guests_with_splits[split_column]
                                             .map({1: 'A', 0: 'B'})
         )
-        self.abtest_params['data']['group_col'] = split_column
-        self.abtest_params['data']['target'] = metric_col
+        self.abtest_params.data_params.group_col = split_column
+        self.abtest_params.data_params.target = metric_col
 
-        ab_test = ABTest(guests_with_splits, self.abtest_params, startup_config=True)
+        ab_test = ABTest(guests_with_splits, self.abtest_params)
         ab_test = self.experiment_params.transformations(ab_test)
 
         if isinstance(grid_element, PrepilotBetaExperiment):
-            ab_test.config['treatment'] = ab_test.config['treatment']*grid_element.inject
+            ab_test.params.data_params.treatment = ab_test.params.data_params.treatment * grid_element.inject
             row_dict["MDE"] = [grid_element.inject]
         row_dict["effect_significance"] = self.experiment_params.stat_test(ab_test, self.experiment_params.bootstrap_metric)
         return pd.DataFrame(row_dict)
