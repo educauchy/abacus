@@ -1,55 +1,76 @@
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Dict, Union, Callable, Optional, Any
 import hashlib, pprint
+import yaml
+from typing import List, Tuple, Dict, Union, Callable, Optional, Any
 from collections import Counter, defaultdict
+from scipy.stats import ks_2samp, entropy
 from sklearn.model_selection import train_test_split
 from sklearn.cluster import KMeans, DBSCAN
-from scipy.stats import ks_2samp, entropy
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 
 
 class Splitter:
-    def __init__(self, split_rate: float = 0.5,
-                custom_splitter: Optional[Callable[[pd.DataFrame], pd.DataFrame]] = None) -> None:
-        """
-        :param split_rate: Share of control group
-        :param custom_splitter: Custom splitter function which must take parameters:
-            X: Pandas DataFrame
-            target: Target column name (if continuous metric)
-            numerator: Numerator column name (if ratio metric)
-            denominator: Denominator column name (if ratio metric)
-            split_rate: Split rate
-        """
-        self.split_rate = split_rate
-        self.custom_splitter = custom_splitter
+    def __init__(self, config: Dict[Any, Any] = None) -> None:
+        if config is not None:
+            self.config: Dict[Any, Any] = {}
+            self.config_load(config)
+        else:
+            raise Exception('You must pass config file')
 
-    def __clustering(self, X_full: pd.DataFrame = None, X: pd.DataFrame = None, n_clusters: int = None) -> np.array:
+    def config_load(self, config: Dict[Any, Any]) -> None:
+        self.config['metric_type']      = config['metric']['type']
+        self.config['metric_name']      = config['metric']['name']
+        self.config['split_rate']       = config['splitter']['split_rate']
+        self.config['id_col']           = config['data']['id_col']
+        self.config['cluster_col']      = config['data']['cluster_col']
+        self.config['target']           = config['data']['target']
+        self.config['numerator']        = config['data']['numerator']
+        self.config['denominator']      = config['data']['denominator']
+
+        self.config['alpha']            = config['aa_test']['alpha']
+        self.config['aa_method']        = config['aa_test']['method']
+        self.config['clustering_cols']  = config['data']['clustering_cols']
+        self.config['to_cluster']       = config['aa_test']['to_cluster']
+        self.config['n_clusters']       = config['aa_test']['n_clusters']
+
+        if config['splitter']['type'] == 'custom':
+            self.splitter = lambda x: np.mean(x)
+        elif config['splitter']['type'] == 'builtin':
+            self.splitter = self.__default_splitter
+
+        if config['data']['path'] != '':
+            df: pd.DataFrame = pd.read_csv(config['splitter']['data'], encoding='utf8')
+            n_rows = df.shape[0] + 1 if config['data']['n_rows'] == -1 else config['data']['n_rows']
+            df = df.iloc[:n_rows]
+            self.config['dataset'] = df.to_dict()
+            self.dataset = df
+
+    def __default_splitter(self, split_rate: float = 0.5):
+        A_data, B_data = train_test_split(self.dataset, train_size=split_rate, random_state=0)
+        A_data.loc[:, self.config['group_col']] = 'A'
+        B_data.loc[:, self.config['group_col']] = 'B'
+        Z = pd.concat([A_data, B_data]).reset_index(drop=True)
+        return Z
+
+    def __clustering(self) -> None:
         """
         Clustering for dataset
-        :param X_full: Pandas DataFrame to cluster
-        :param X: Pandas DataFrame to predict cluster_id
-        :param n_clusters: Number of clusters
-        :return: Numpy array with cluster id
         """
-        kmeans = KMeans(n_clusters=n_clusters)
-        kmeans.fit(X_full)
-        cluster_id = kmeans.predict(X)
+        X = self.dataset.copy()
+        kmeans = KMeans(n_clusters=self.config['n_clusters'])
+        kmeans.fit(X)
+        self.dataset.loc[self.config['cluster_col']] = kmeans.predict(X)
 
-        return cluster_id
-
-    def __kl_divergence(self, a_cluster_id: Union[np.array, List[int]] = None,
-                        b_cluster_id: Union[np.array, List[int]] = None, n_bins: int = 50) -> Tuple[float, float]:
+    def __kl_divergence(self, n_bins: int = 50) -> Tuple[float, float]:
         """
         Kullback-Leibler divergence for two arrays of cluster ids for A/A test
-        :param a_cluster_id: List of cluster ids for group A
-        :param b_cluster_id: List of cluster ids for group B
         :param n_bins: Number of clusters
         :return: Kullback-Leibler divergence a to b and b to a
         """
-        a = a_cluster_id
-        b = b_cluster_id
+        a = self.dataset.loc[self.dataset[self.config['group_col'] == 'A'], self.config['cluster_col']].tolist()
+        b = self.dataset.loc[self.dataset[self.config['group_col'] == 'B'], self.config['cluster_col']].tolist()
 
         bins_arr = list(range(1, n_bins+1))
         a = np.histogram(a, bins=bins_arr, density=True)[0]
@@ -67,6 +88,8 @@ class Splitter:
         :param target: Target for model
         :return: ROC-AUC score for model
         """
+        X = self.dataset[self.config['clustering_cols']]
+        target = self.config['target']
         clf = RandomForestClassifier()
         clf.fit(X, target)
         pred = clf.predict_proba(X)
@@ -74,82 +97,58 @@ class Splitter:
 
         return roc_auc
 
-    def __alpha_simulation(self, X: pd.DataFrame = None, target: np.array = None,
-                numerator: str = None, denominator: str = None,
-                metric_type: str = 'solid',
-                alpha: float = 0.05, n_iter: int = 10000) -> float:
+    def __alpha_simulation(self, n_iter: int = 10000) -> float:
         """
         Perform A/A test
-        :param X: Pandas DataFrame to test
-        :param target: Target column name (if continuous metric)
-        :numerator: Numerator column name (if ratio metric)
-        :denominator: Denominator column name (if ratio metric)
-        :param metric_type: Test metric type
-        :param alpha: Significance level
         :param n_iter: Number of iterations
         :return: Actual alpha; Share of iterations when control and treatment groups are equal
         """
         result: int = 0
         for it in range(n_iter):
-            if metric_type == 'solid':
-                X = self.fit(X, target=target, split_rate=self.split_rate)
-                control, treatment = X.loc[X['group'] == 'A', target].to_numpy(), \
-                                     X.loc[X['group'] == 'B', target].to_numpy()
-                _, pvalue = ks_2samp(control, treatment)
-                if pvalue >= alpha:
+            if self.config['metric_type'] == 'solid':
+                _, pvalue = ks_2samp(self.config['control'], self.config['treatment'])
+                if pvalue >= self.config['alpha']:
                     result += 1
-            elif metric_type == 'ratio':
-                X = self.fit(X, numerator=numerator, denominator=denominator, split_rate=self.split_rate)
-                num_control, num_treatment = X.loc[X['group'] == 'A', numerator].to_numpy(), \
-                                                X.loc[X['group'] == 'B', numerator].to_numpy()
+            elif self.config['metric_type'] == 'ratio':
+                num_control, num_treatment = self.dataset.loc[self.dataset[self.config['group_col']] == 'A',
+                                                              self.config['numerator']].to_numpy(), \
+                                            self.dataset.loc[self.dataset[self.config['group_col']] == 'B',
+                                                             self.config['numerator']].to_numpy()
                 _, num_pvalue = ks_2samp(num_control, num_treatment)
 
-                den_control, den_treatment = X.loc[X['group'] == 'A', denominator].to_numpy(), \
-                                             X.loc[X['group'] == 'B', denominator].to_numpy()
+                den_control, den_treatment = self.dataset.loc[self.dataset[self.config['group_col']] == 'A', self.config['denominator']].to_numpy(), \
+                                             self.dataset.loc[self.dataset[self.config['group_col']] == 'B', self.config['denominator']].to_numpy()
                 _, den_pvalue = ks_2samp(den_control, den_treatment)
 
-                if num_pvalue >= alpha and den_pvalue >= alpha:
+                if num_pvalue >= self.config['alpha'] and den_pvalue >= self.config['alpha']:
                     result += 1
 
         result /= n_iter
 
         return result
 
-    def aa_test(self, X_full: pd.DataFrame = None, X: pd.DataFrame = None, target: np.array = None,
-                group_id: np.array = None, method: str = None):
-        if method == 'alpha-simulation':
-            actual_alpha = self.__alpha_simulation(X, target)
+    def aa_test(self):
+        if self.config['to_cluster']:
+            self.__clustering()
+
+        if self.config['aa_method'] == 'alpha-simulation':
+            actual_alpha = self.__alpha_simulation()
             return actual_alpha
-        elif method == 'kl-divergence':
-            X_ext = X.copy()
-            X_ext['group_id'] = group_id
-            X_ext['cluster_id'] = self.__clustering(X_full, X, 50)
-            a = X_ext.loc[X_ext.group_id == 'CONTROL', 'cluster_id'].tolist()
-            b = X_ext.loc[X_ext.group_id == 'TREATMENT', 'cluster_id'].tolist()
-            kl_divs = self.__kl_divergence(a, b, 50)
+        elif self.config['aa_method'] == 'kl-divergence':
+            kl_divs = self.__kl_divergence(50)
             return kl_divs
-        elif method == 'model-classify':
-            roc_auc = self.__model_classify(X, target)
+        elif self.config['aa_method'] == 'model-classify':
+            roc_auc = self.__model_classify()
             return roc_auc
 
-    def fit(self, X: pd.DataFrame, target: np.array = None, numerator: str = None,
-            denominator: str = None, split_rate: float = None) -> pd.DataFrame:
+    def fit(self) -> None:
         """
         Split DataFrame and add group column based on splitting
         :param X: Pandas DataFrame to split
         :param split_rate: Split rate of control to treatment
         :return: DataFrame with additional 'group' column
         """
-        if self.custom_splitter is None:
-            split_rate = split_rate if split_rate is not None else self.split_rate
-            A_data, B_data = train_test_split(X, train_size=split_rate, random_state=0)
-            A_data.loc[:, 'group'] = 'A'
-            B_data.loc[:, 'group'] = 'B'
-            Z = pd.concat([A_data, B_data]).reset_index(drop=True)
-        else:
-            Z = self.custom_splitter(X, target, split_rate)
-
-        return Z
+        return self.splitter(self.config['split_rate'])
 
     def create_level(self, X: pd.DataFrame, id_column: str = '', salt: Union[str, int] = '',
                      n_buckets: int = 100) -> pd.DataFrame:
@@ -161,7 +160,7 @@ class Splitter:
         :param n_buckets: Number of buckets for level
         :return: Pandas DataFrame extended by column 'bucket'
         """
-        ids: np.array = X[id_column].to_numpy()
+        ids: np.array = X[self.config['id_col']].to_numpy()
         salt: str = salt if type(salt) is str else str(int)
         salt: bytes = bytes(salt, 'utf-8')
         hasher = hashlib.blake2b(salt=salt)
@@ -195,6 +194,13 @@ if __name__ == '__main__':
     })
     conf = ['sex', 'married']
     stratify_by = ['country']
-    X_out = Splitter(split_rate=0.4, confounding=conf).fit(X)
+    X_out = Splitter().fit()
 
 
+    df = pd.read_csv('../../examples/storage/data/ab_data.csv')
+
+    with open("../../config.yaml", "r") as stream:
+        try:
+            config = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)

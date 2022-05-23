@@ -87,7 +87,7 @@ class Simulation:
         plt.show()
 
 
-    def mde_simulation_old(self, strategy: str = 'simple_test', strata: Optional[str] = '',
+    def mde_simulation(self, strategy: str = 'simple_test', strata: Optional[str] = '',
                        metric_type: str = 'solid', n_boot_samples: Optional[int] = 10000, n_buckets: Optional[int] = None,
                        metric: Optional[Callable[[Any], float]] = None, strata_weights: Optional[Dict[str, float]] = None,
                        use_correction: Optional[bool] = True, to_csv: bool = False,
