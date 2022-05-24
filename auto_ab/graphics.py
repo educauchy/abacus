@@ -8,7 +8,7 @@ from typing import Union, Dict, List, Optional
 from scipy.stats import norm, mode
 
 sys.path.append('..')
-from analysis.ab_params import *
+from auto_ab.params import *
 
 
 class Graphics:

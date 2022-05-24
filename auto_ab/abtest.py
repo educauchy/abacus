@@ -8,11 +8,12 @@ import yaml
 from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t
 from typing import Dict, Union, Optional, Callable, Tuple, List, Any
 from tqdm.auto import tqdm
-from analysis.graphics import Graphics
-from analysis.variance_reduction import VarianceReduction
+from auto_ab.graphics import Graphics
+from auto_ab.variance_reduction import VarianceReduction
+from auto_ab.params import ABTestParams
 
 sys.path.append('..')
-from analysis.ab_params import *
+from auto_ab.params import *
 
 
 metric_name_typing = Union[str, Callable[[np.array], Union[int, float]]]
@@ -284,7 +285,7 @@ class ABTest:
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_strata_metric = 0
             y_strata_metric = 0
-            for strat in weights.keys():
+            for strat in self.params.hypothesis_params.strata_weights.keys():
                 X_strata = X.loc[X[strata_col] == strat, self.params.data_params.target]
                 Y_strata = Y.loc[Y[strata_col] == strat, self.params.data_params.target]
                 x_strata_metric += (self.params.hypothesis_params

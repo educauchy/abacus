@@ -3,7 +3,7 @@ from click import Abort
 from pydantic import root_validator, validator
 from pydantic.dataclasses import dataclass
 import numpy as np
-from analysis.abtest import ABTest
+from auto_ab.abtest import ABTest
 from fastcore.transform import Pipeline
 
 
