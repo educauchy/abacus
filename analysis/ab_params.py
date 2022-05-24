@@ -18,7 +18,7 @@ class MetricParams:
     @validator("type", always=True)
     @classmethod
     def alternative_validator(cls, type: float):
-        assert type in ['solid', 'ratio']
+        assert type in ['solid', 'ratio', 'binary']
         return type
 
 @dataclass(config=ValidationConfig)
@@ -34,7 +34,11 @@ class DataParams:
     covariate: str = 'height_prev'
     target_prev: str = 'height_prev'
     predictors_prev: List[str] = Field(default=['weight_prev'])
+    cluster_col: str = 'cluster_id'
+    clustering_cols: List[str] = Field(default=['col1'])
     is_grouped: bool = True
+    control: List = Field(default_factory=list)
+    treatment: List = Field(default_factory=list)
 
 @dataclass(config=ValidationConfig)
 class ResultParams:
@@ -44,6 +48,7 @@ class ResultParams:
 @dataclass(config=ValidationConfig)
 class SplitterParams:
     split_rate: float = 0.5
+    name: str = 'default'
 
 @dataclass(config=ValidationConfig)
 class SimulationParams:
