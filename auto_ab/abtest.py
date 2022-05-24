@@ -273,8 +273,7 @@ class ABTest:
         }
         return result
 
-    def test_hypothesis_strat_confint(self, strata_col: str = '',
-                                    weights: Dict[str, float] = None) -> stat_test_typing:
+    def test_hypothesis_strat_confint(self) -> stat_test_typing:
         """
         Perform stratification with confidence interval
         :return: Test result: 1 - significant different, 0 - insignificant difference
@@ -286,13 +285,15 @@ class ABTest:
             x_strata_metric = 0
             y_strata_metric = 0
             for strat in self.params.hypothesis_params.strata_weights.keys():
-                X_strata = X.loc[X[strata_col] == strat, self.params.data_params.target]
-                Y_strata = Y.loc[Y[strata_col] == strat, self.params.data_params.target]
+                X_strata = X.loc[X[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
+                Y_strata = Y.loc[Y[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
                 x_strata_metric += (self.params.hypothesis_params
-                                    .metric(np.random.choice(X_strata, size=X_strata.shape[0] // 2, replace=False)) * weights[strat])
+                                    .metric(np.random.choice(X_strata, size=X_strata.shape[0] // 2, replace=False)) * 
+                                    self.params.hypothesis_params.strata_weights[strat])
                 y_strata_metric += (self.params.hypothesis_params
-                                    .metric(np.random.choice(Y_strata, size=Y_strata.shape[0] // 2, replace=False)) * weights[strat])
-            metric_diffs.append(self.params.hypothesis_params(x_strata_metric) - self.params.hypothesis_params.metric(y_strata_metric))
+                                    .metric(np.random.choice(Y_strata, size=Y_strata.shape[0] // 2, replace=False)) * 
+                                    self.params.hypothesis_params.strata_weights[strat])
+            metric_diffs.append(self.params.hypothesis_params.metric(x_strata_metric) - self.params.hypothesis_params.metric(y_strata_metric))
         pd_metric_diffs = pd.DataFrame(metric_diffs)
 
         left_quant = self.params.hypothesis_params.alpha / 2

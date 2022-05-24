@@ -55,7 +55,7 @@ class HypothesisParams:
     split_ratios: Tuple[float, float]= Field(default=(0.5, 0.5))
     strategy: str = 'simple_test'
     strata: str = 'country'
-    strata_weights: dict = Field(default={'US': 0.8, 'UK': 0.2})
+    strata_weights: dict = Field(default={1: 0.8, 2: 0.2})
     metric: Union[Callable[[Any], Union[int,float]], str] = np.mean
     n_boot_samples: int = 200
     n_buckets: int = 50
