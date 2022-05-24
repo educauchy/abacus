@@ -1,9 +1,14 @@
+import sys
 import numpy as np
+import yaml
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Union, Dict, List, Optional
 from scipy.stats import norm, mode
+
+sys.path.append('..')
+from analysis.ab_params import *
 
 
 class Graphics:
@@ -11,7 +16,7 @@ class Graphics:
         pass
 
     @staticmethod
-    def plot_simulation_log(log_path: str):
+    def plot_simulation_matrix(log_path: str):
         df = pd.read_csv(log_path)
         df_pivot = df.pivot(index='split_rate', columns='increment', values='pval_sign_share')
         plt.figure(figsize=(15, 8))
@@ -21,72 +26,85 @@ class Graphics:
         plt.close()
 
     @staticmethod
-    def plot_distributions(X: pd.DataFrame, target: str, groups: str, bins: int = 30) -> None:
-        """Plot distributions and save plot on given path."""
-        a = X.loc[X[groups] == 'A', target]
-        b = X.loc[X[groups] == 'B', target]
-        a_mean = a.mean()
-        b_mean = b.mean()
-        plt.hist(a, bins, alpha=0.5, label='control')
-        plt.hist(b, bins, alpha=0.5, label='treatment')
-        plt.vlines([a_mean, b_mean], ymin=0, ymax=1000, linestyle='--')
-        plt.legend(loc='upper right')
-        plt.show()
-        plt.close()
-
-    def plot_distribution(self, X: Optional[np.array], ci: np.array = None, bins: int = 30) -> None:
-        """Generate distributions and save plot on given path."""
-        plt.hist(X, bins, alpha=0.9, label='Custom metric distribution')
-        if ci is not None:
-            plt.vlines(ci, ymin=0, ymax=20, linestyle='--')
-        plt.legend(loc='upper right')
+    def plot_median_experiment(params: ABTestParams = ABTestParams()) -> None:
+        """Plot distributions of medians"""
+        bins = 100
+        a_median = np.mean(params.data_params.control)
+        b_median = np.mean(params.data_params.treatment)
+        threshold = np.quantile(params.data_params.control, 0.975)
+        fig, ax = plt.subplots(figsize=(20, 12))
+        ax.hist(params.data_params.control, bins, alpha=0.5, label='Control', color='Red')
+        ax.hist(params.data_params.treatment, bins, alpha=0.5, label='Treatment', color='Green')
+        ax.axvline(x=a_median, color='Red')
+        ax.axvline(x=b_median, color='Green')
+        ax.axvline(x=threshold, color='Blue', label='Critical value')
+        ax.legend(loc='upper right')
         plt.show()
         plt.close()
 
     @staticmethod
-    def plot_mean_experiment(a: Union[np.array, List[Union[int, float]]] = None,
-                            b: Union[np.array, List[Union[int, float]]] = None,
-                            alternative: str = 'two-sided',
-                            metric: str = 'mean', alpha: float = 0.05, beta: float = 0.2) -> None:
-        bins = 50
-        a_mean = np.mean(a)
-        b_mean = np.mean(b)
-        threshold = np.quantile(a, 0.975)
+    def plot_mean_experiment(params: ABTestParams = ABTestParams()) -> None:
+        """Plot distributions of means"""
+        bins = 100
+        a_mean = np.mean(params.data_params.control)
+        b_mean = np.mean(params.data_params.treatment)
+        threshold = np.quantile(params.data_params.control, 0.975)
         fig, ax = plt.subplots(figsize=(20, 12))
         ax.text(a_mean, 100, 'H0', fontsize='xx-large')
         ax.text(b_mean, 100, 'H1', fontsize='xx-large')
-        ax.hist(a, bins, alpha=0.5, label='control', color='Red')
-        ax.hist(b, bins, alpha=0.5, label='treatment', color='Green')
+        ax.hist(params.data_params.control, bins, alpha=0.5, label='Control', color='Red')
+        ax.hist(params.data_params.treatment, bins, alpha=0.5, label='Treatment', color='Green')
         ax.axvline(x=a_mean, color='Red')
         ax.axvline(x=b_mean, color='Green')
-        ax.axvline(x=threshold, color='Blue', label='critical value')
+        ax.axvline(x=threshold, color='Blue', label='Critical value')
         ax.legend()
         plt.show()
+        plt.close()
 
     @staticmethod
     def plot_bootstrap_confint(X: Union[np.array, List[Union[int, float]]] = None,
-                               alternative: str = 'two-sided',
-                               alpha: float = 0.05, beta: float = 0.2
-                               ) -> None:
-        bins = 50
-        threshold = np.quantile(X, 0.025)
+                               params: ABTestParams = ABTestParams()) -> None:
+        bins = 100
+        ci_left, ci_right = np.quantile(X, params.hypothesis_params.alpha / 2), \
+                            np.quantile(X, 1 - params.hypothesis_params.alpha / 2)
         fig, ax = plt.subplots(figsize=(20, 12))
         ax.hist(X, bins, alpha=0.5, label='Differences in metric', color='Red')
         ax.axvline(x=0, color='Red', label='No difference')
-        ax.axvline(x=threshold, color='Blue', label='critical value')
+        ax.vlines([ci_left, ci_right], ymin=0, ymax=100, linestyle='--', label='Confidence interval')
         ax.legend()
         plt.show()
-        pass
 
 if __name__ == '__main__':
-    a = np.random.normal(0, 4, 5_000)
-    b = np.random.normal(0, 6, 5_000)
+    with open("../analysis/configs/auto_ab.config.yaml", "r") as stream:
+        try:
+            ab_config = yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+
+    metric_params = MetricParams(**ab_config['metric_params'])
+    data_params = DataParams(**ab_config['data_params'])
+    simulation_params = SimulationParams(**ab_config['simulation_params'])
+    hypothesis_params = HypothesisParams(**ab_config['hypothesis_params'])
+    result_params = ResultParams(**ab_config['result_params'])
+    splitter_params = SplitterParams(**ab_config['splitter_params'])
+    # bootstrap_params = BootstrapParams(**ab_config['bootstrap_params'])
+
+    ab_params = ABTestParams(metric_params,
+                             data_params,
+                             simulation_params,
+                             hypothesis_params,
+                             result_params,
+                             splitter_params)
+
+    dots = 10_000
+    boot_samples = 5000
+    a = np.random.normal(0, 4, dots)
+    b = np.random.normal(1, 6, dots)
     gr = Graphics()
-    # gr.plot_mean_experiment(a, b)
 
     metric_diffs: List[float] = []
-    for _ in range(5000):
+    for _ in range(boot_samples):
         x_boot = np.random.choice(a, size=a.shape[0], replace=True)
         y_boot = np.random.choice(b, size=b.shape[0], replace=True)
         metric_diffs.append(np.mean(y_boot) - np.mean(x_boot))
-    gr.plot_bootstrap_confint(metric_diffs)
+    gr.plot_bootstrap_confint(metric_diffs, ab_params)
