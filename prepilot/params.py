@@ -1,9 +1,20 @@
-from typing import List
-from pydantic import root_validator
+from typing import List, Any, Dict, Optional, Callable, Union
+from click import Abort
+from pydantic import root_validator, validator
 from pydantic.dataclasses import dataclass
+import numpy as np
+from analysis.abtest import ABTest
+from fastcore.transform import Pipeline
 
 
-@dataclass
+class ValidationConfig:
+    validate_assignment = True
+    arbitrary_types_allowed = True
+    #error_msg_templates = {
+    #    'value_error.any_str.max_length': 'max_length:{limit_value}',
+    #}
+
+@dataclass(config=ValidationConfig)
 class PrepilotParams:
     """Prepilot experiment parameters class.
 
@@ -24,9 +35,37 @@ class PrepilotParams:
     min_group_size: int
     max_group_size: int
     step: int
+    #experiment_pipeline: List[Callable]
+    variance_reduction: Optional[Callable[[ABTest], ABTest]] = None
+    use_buckets: bool = False
+    transformations: Any = None
+    stat_test: Callable[[ABTest], Dict[str, Union[int, float] ]] = ABTest.test_hypothesis_boot_confint
+    bootstrap_metric: Callable[[Any], float] = np.mean
     iterations_number: int = 10
+    n_buckets: int = 1000
     max_beta_score: float = 0.2
     min_beta_score: float = 0.05
+
+    def __post_init__(self):
+        if self.use_buckets:
+            transformations = [self.variance_reduction, ABTest.bucketing]
+        else:
+            transformations = [self.variance_reduction]
+        transformations = list(filter(None, transformations))
+        self.transformations = Pipeline(transformations)
+
+    @validator("stat_test", always=True)
+    @classmethod
+    def alternative_validator(cls, stat_test):
+        assert stat_test in [ABTest.test_hypothesis_boot_confint, 
+                             ABTest.test_hypothesis_boot_est,
+                             ABTest.test_hypothesis_strat_confint,
+                             ABTest.test_hypothesis,
+                             ABTest.delta_method,
+                             ABTest.ratio_taylor,
+                             ABTest.ratio_bootstrap
+                            ]
+        return stat_test
 
     @root_validator
     @classmethod

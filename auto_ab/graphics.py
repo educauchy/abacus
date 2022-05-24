@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import Union, Dict, List
+from typing import Union, Dict, List, Optional
 from scipy.stats import norm, mode
 
 
@@ -34,7 +34,7 @@ class Graphics:
         plt.show()
         plt.close()
 
-    def plot_distribution(self, X: Union[np.array], ci: np.array = None, bins: int = 30) -> None:
+    def plot_distribution(self, X: Optional[np.array], ci: np.array = None, bins: int = 30) -> None:
         """Generate distributions and save plot on given path."""
         plt.hist(X, bins, alpha=0.9, label='Custom metric distribution')
         if ci is not None:

@@ -3,9 +3,6 @@ import copy
 import itertools
 import numpy as np
 import pandas as pd
-import pyspark.sql.functions as F
-import pyspark.sql.types as T
-from pyspark.sql.functions import pandas_udf
 from stratification.params import SplitBuilderParams
 from stratification.split_builder import build_split, prepare_cat_data, assign_strata
 from prepilot.experiment_structures import BaseSplitElement
@@ -15,8 +12,9 @@ class PrepilotSplitBuilder():
     """Columns with splits and injects will be added
     """
     def __init__(self,
-                 spark,
-                 guests,
+                 guests: pd.DataFrame,
+                 metrics_names: List[str],
+                 injects: List[float],
                  group_sizes: List[int],
                  stratification_params: SplitBuilderParams,
                  iterations_number: int = 10):
@@ -30,102 +28,111 @@ class PrepilotSplitBuilder():
             iterations_number: number of columns that will be build for each group size
 
         """
-        self.spark = spark
-        self.guests = guests.withColumn("partion", F.lit(1))
+        self.guests = guests
+        self.metrics_names = metrics_names
+        self.injects = injects
         self.iterations_number = iterations_number
         self.group_sizes = group_sizes
         self.stratification_params = copy.deepcopy(stratification_params)
-        self.split_grid = self._build_splits_grid()
+        self.split_grid = self.build_splits_grid()
+        #self._update_strat_params()
 
-    def _build_splits_grid(self):
+    def build_splits_grid(self):
         return list(BaseSplitElement(el[0], el[1])
                     for el in itertools.product(self.group_sizes, np.arange(1, self.iterations_number+1)))
-    
-
-    def apply_strata(self):
-
-        def strata_generator(df, stratification_params):
-            schema = (copy.deepcopy(df.schema)
-                    .add(T.StructField("strata", T.StringType(), False))
-            )
-
-            @pandas_udf(schema, F.PandasUDFType.GROUPED_MAP)
-            def build_strata_pd(df: pd.DataFrame):
-
-                guests_data = prepare_cat_data(df, stratification_params)
-                guests_data_with_strata = assign_strata(guests_data.reset_index(drop=True), stratification_params)
-
-                return guests_data_with_strata
-
-            return build_strata_pd
-
-        strata = strata_generator(self.guests, self.stratification_params)
-        strata_output = self.guests.groupBy("partion").apply(strata)
-
-        return strata_output
-
-
-    def build_split_df(self, 
-                    guests_with_strata,
-                    split: BaseSplitElement):
-
-        def build_split_generator(stratification_params, 
-                            split: BaseSplitElement):
-
-            schema = T.StructType([T.StructField("split_group_sizes", T.StringType(), False),
-                                T.StructField("split_number", T.IntegerType(), False),
-                                T.StructField(stratification_params.customer_col, T.LongType(), False),
-                                T.StructField("is_control", T.IntegerType(), False)])
-
-            @pandas_udf(schema, F.PandasUDFType.GROUPED_MAP)
-            def build_split_pd(df: pd.DataFrame):
-                map_group_names_to_sizes={
-                    "control": split.control_group_size,
-                    "target": split.target_group_size
-                }
-
-                stratification_params.map_group_names_to_sizes = map_group_names_to_sizes
-
-                guests_groups = build_split(df, stratification_params)
-                guests_groups = guests_groups.join(
-                                pd.get_dummies(guests_groups["group_name"])
-                                .add_prefix("is_")
-                )
-                
-                guests_groups["split_group_sizes"] = f"{split.control_group_size}_{split.target_group_size}"
-                guests_groups["split_number"] = split.split_number
-                            
-                result = pd.DataFrame({"split_group_sizes": guests_groups["split_group_sizes"],
-                                       "split_number": guests_groups["split_number"],
-                                       stratification_params.customer_col: guests_groups[stratification_params.customer_col],
-                                       "is_control": guests_groups["is_control"]
-                                     })
-
-                return result
-            return build_split_pd
-
-        split = build_split_generator(self.stratification_params,
-                                      split)
-        split = guests_with_strata.groupBy("partion").apply(split)
-
-        return split
 
     def collect(self):
-        """Calculate multiple split with stratification
+        """Builds dataframe with data for prepilot experiments
 
-        Returns: DataFrame with split column
+        Returns: pandas DataFrame with columns for splits and injected metrics
 
         """
-        schema = T.StructType([T.StructField("split_group_sizes", T.StringType(), False),
-                            T.StructField("split_number", T.IntegerType(), False),
-                            T.StructField(self.stratification_params.customer_col, T.LongType(), False),
-                            T.StructField("is_control", T.IntegerType(), False)])
+        #df_with_injects = self.calc_injected_merics(self.guests)
+        prepilot_df = self.multliple_split(self.guests)
+        return prepilot_df
 
-        result = self.spark.createDataFrame([], schema)
-        data_with_strata = self.apply_strata()
+    def _update_strat_params(self):
+        """Update stratification columns, because of columns names duplicated problem
+        """
+        self.stratification_params.cols = [el + "_strat"
+                                           if el not in [self.stratification_params.region_col, 
+                                                         self.stratification_params.split_metric_col
+                                                        ]
+                                           else el
+                                           for el in self.stratification_params.cols]
+        self.stratification_params.cat_cols = [el + "_strat" for el in self.stratification_params.cat_cols]
 
-        for split_param in self.split_grid:
-            split_data = self.build_split_df(data_with_strata, split_param)
-            result = result.unionAll(split_data)
-        
-        return result
+    def calc_injected_merics(self, guests_for_injects: pd.DataFrame) -> pd.DataFrame:
+        """Calculates injected metrics for guests df
+
+        Args:
+            guests_for_injects: dataframe with metrics columns
+
+        Returns: dataframe with injected metrics columns
+        """
+        matched = list(itertools.product(self.metrics_names, self.injects))
+        guests_for_injects_copy = guests_for_injects.copy()
+        for pair in matched:
+            guests_for_injects_copy[f"{pair[0]}_{pair[1]}"] = guests_for_injects_copy[f"{pair[0]}"] * pair[1]
+        return guests_for_injects_copy
+
+    def _build_split(self,
+                     guests_with_strata: pd.DataFrame,
+                     control_group_size: int,
+                     target_group_size: int,
+                     split_number: int = 1):
+        """Calculate one split with stratification
+
+        Args:
+            guests_with_strata: Dataframe fwith stratas
+            control_group_size: control group size
+            target_group_size: target group size
+            split_number: number of split. Uses as suffix for new column
+
+        Returns: pandas DataFrame with split
+
+        """
+        map_group_names_to_sizes={
+            "control": control_group_size,
+            "target": target_group_size
+        }
+
+        self.stratification_params.map_group_names_to_sizes = map_group_names_to_sizes
+        guests_groups = build_split(guests_with_strata, self.stratification_params)
+        guests_groups = guests_groups.join(
+                        pd.get_dummies(guests_groups["group_name"])
+                        .add_prefix("is_")
+                        .add_suffix(f"_{control_group_size}_{target_group_size}_{split_number}")
+        )
+        return guests_groups[[self.stratification_params.customer_col
+                              ,f"is_control_{control_group_size}_{target_group_size}_{split_number}"]]
+
+    def multliple_split(self, guests_for_split: pd.DataFrame) -> pd.DataFrame:
+        """Calculate multiple split with stratification
+
+        Returns: pandas DataFrame with split columns
+
+        """
+        guests_data = prepare_cat_data(guests_for_split, self.stratification_params)
+        guests_data_with_strata = assign_strata(guests_data.reset_index(drop=True), self.stratification_params)
+        del guests_data
+
+        experiment_guests = self.guests.loc[:, [self.stratification_params.customer_col]]
+        for split in self.split_grid:
+            experiment_column = f"is_control_{split.control_group_size}_{split.target_group_size}_{split.split_number}"
+            guests_split = self._build_split(guests_data_with_strata,
+                                             split.control_group_size,
+                                             split.target_group_size,
+                                             split.split_number)
+            experiment_guests = (experiment_guests
+                                 .merge(guests_split[[self.stratification_params.customer_col
+                                                      , experiment_column]],
+                                        on=self.stratification_params.customer_col,
+                                        how="left"))
+            del guests_split
+        guests_data_with_strata = (guests_data_with_strata
+                                   .merge(experiment_guests,
+                                          on=self.stratification_params.customer_col,
+                                          how="inner"))
+        del experiment_guests
+        return guests_data_with_strata

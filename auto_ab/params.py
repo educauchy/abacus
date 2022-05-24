@@ -1,25 +1,15 @@
 from __future__ import annotations
-from typing import List, Tuple, Any, Callable
+from typing import List, Tuple, Any, Callable, Union
 from pydantic.dataclasses import dataclass
 from pydantic import validator, Field
 import numpy as np
 
 class ValidationConfig:
     validate_assignment = True
+    arbitrary_types_allowed = True
     #error_msg_templates = {
     #    'value_error.any_str.max_length': 'max_length:{limit_value}',
     #}
-
-@dataclass(config=ValidationConfig)
-class MetricParams:
-    type: str = 'solid'
-    name: str = 'mean'
-
-    @validator("type", always=True)
-    @classmethod
-    def alternative_validator(cls, type: float):
-        assert type in ['solid', 'ratio', 'binary']
-        return type
 
 @dataclass(config=ValidationConfig)
 class DataParams:
@@ -37,8 +27,8 @@ class DataParams:
     cluster_col: str = 'cluster_id'
     clustering_cols: List[str] = Field(default=['col1'])
     is_grouped: bool = True
-    control: List = Field(default_factory=list)
-    treatment: List = Field(default_factory=list)
+    control: np.ndarray = np.array([])
+    treatment: np.ndarray = np.array([])
 
 @dataclass(config=ValidationConfig)
 class ResultParams:
@@ -58,27 +48,6 @@ class SimulationParams:
     extra_params: List = Field(default_factory=list)
 
 @dataclass(config=ValidationConfig)
-class BootstrapParams:
-    metric: Callable[[Any], float] = np.mean
-    n_boot_samples: int = 200
-
-    @validator("metric", always=True)
-    @classmethod
-    def metric_validator(cls, metric: float):
-        if type(metric)==str:
-            assert metric in ['mean', 'median']
-            return metric
-        else: 
-            return metric
-
-    def __post_init__(self):
-        if type(self.metric)==str:
-            if self.metric=='mean':
-                self.metric=np.mean
-            if self.metric=='median':
-                self.metric=np.median
-
-@dataclass(config=ValidationConfig)
 class HypothesisParams:
     alpha: float = 0.05
     beta: float = 0.2
@@ -87,8 +56,16 @@ class HypothesisParams:
     strategy: str = 'simple_test'
     strata: str = 'country'
     strata_weights: dict = Field(default={'US': 0.8, 'UK': 0.2})
+    metric: Union[Callable[[Any], Union[int,float]], str] = np.mean
     n_boot_samples: int = 200
     n_buckets: int = 50
+
+    def __post_init__(self):
+        if type(self.metric)==str:
+            if self.metric=='mean':
+                self.metric=np.mean
+            if self.metric=='median':
+                self.metric=np.median
 
     @validator("alpha", always=True)
     @classmethod
@@ -115,12 +92,19 @@ class HypothesisParams:
         assert sum(split_ratios)==1.0
         return split_ratios
 
+    @validator("metric", always=True)
+    @classmethod
+    def metric_validator(cls, metric: float):
+        if type(metric)==str:
+            assert metric in ['mean', 'median']
+            return metric
+        else: 
+            return metric
+
 @dataclass
 class ABTestParams:
-    metric_params: MetricParams = MetricParams()
     data_params: DataParams = DataParams()
     simulation_params: SimulationParams = SimulationParams()
     hypothesis_params: HypothesisParams = HypothesisParams()
     result_params: ResultParams = ResultParams()
     splitter_params: SplitterParams = SplitterParams()
-    bootstrap_params: BootstrapParams = BootstrapParams()

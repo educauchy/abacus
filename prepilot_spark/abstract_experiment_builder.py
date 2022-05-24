@@ -17,6 +17,7 @@ class AbstractExperimentBuilder:
         _POST_ANALYSIS_CONFIG = yaml.safe_load(f)
 
     def __init__(self,
+                 spark,
                  guests: pd.DataFrame,
                  experiment_params):
         """
@@ -27,6 +28,7 @@ class AbstractExperimentBuilder:
         """
 
         self.guests = guests
+        self.spark = spark
         self.experiment_params = experiment_params
         self.stat_test_params = PeriodStatTestParams(**AbstractExperimentBuilder
                                                      ._POST_ANALYSIS_CONFIG["period_stat_test_params"])

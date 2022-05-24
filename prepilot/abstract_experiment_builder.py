@@ -1,9 +1,8 @@
 import logging
 import itertools
-import yaml
 import numpy as np
 import pandas as pd
-from analysis.params import PeriodStatTestParams
+from auto_ab.params import ABTestParams
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -12,26 +11,18 @@ log.setLevel(logging.INFO)
 class AbstractExperimentBuilder:
     """Base class for Experiment Builders
     """
-    _POST_ANALYSIS_CONFIG_PATH = "../analysis/configs/analysis_config.yaml"
-    with open(_POST_ANALYSIS_CONFIG_PATH) as f:
-        _POST_ANALYSIS_CONFIG = yaml.safe_load(f)
-
     def __init__(self,
-                 spark,
                  guests: pd.DataFrame,
+                 abtest_params: ABTestParams,
                  experiment_params):
         """
         Args:
             guests: pandas dataframe that collected by PrepilotGuestsCollector
             experiment_params: parameters for experiments
-
         """
-
         self.guests = guests
-        self.spark = spark
+        self.abtest_params = abtest_params
         self.experiment_params = experiment_params
-        self.stat_test_params = PeriodStatTestParams(**AbstractExperimentBuilder
-                                                     ._POST_ANALYSIS_CONFIG["period_stat_test_params"])
         self._group_sizes = self._build_group_sizes()
 
     @property

@@ -1,6 +1,5 @@
 import copy
 import warnings
-
 import numpy as np
 import pandas as pd
 import os
@@ -9,9 +8,8 @@ import yaml
 from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t
 from typing import Dict, Union, Optional, Callable, Tuple, List, Any
 from tqdm.auto import tqdm
-from splitter import Splitter
-from graphics import Graphics
-from variance_reduction import VarianceReduction
+from analysis.graphics import Graphics
+from analysis.variance_reduction import VarianceReduction
 
 sys.path.append('..')
 from analysis.ab_params import *
@@ -24,25 +22,10 @@ class ABTest:
     """Perform AB-test"""
     def __init__(self,
                  dataset: pd.DataFrame,
-                 params: ABTestParams = ABTestParams(),
-                 splitter: Optional[Callable[[np.array], Any]] = None,
-                 metric: Optional[Callable[[np.array], Union[int, float]]] = None
+                 params: ABTestParams = ABTestParams()
                  ) -> None:
         self.dataset = dataset
         self.params = params
-
-        if len(self.params.data_params.control) == 0:
-            self.params.data_params.control   = self.__get_group('A')
-            self.params.data_params.treatment = self.__get_group('B')
-
-        if self.params.splitter_params.name == 'custom':
-            self.splitter = splitter
-
-        if self.params.metric_params.name == 'custom':
-            self.metric = metric
-        else:
-            self.metric = self.__metric_calc(self.params.metric_params.name)
-        # TODO: add validation for column presence in dataset
 
     def __str__(self):
         return f"ABTest(alpha={self.params.hypothesis_params.alpha}, " \
@@ -53,16 +36,8 @@ class ABTest:
         X = df if df is not None else self.dataset
 
         group = X.loc[X[self.params.data_params.group_col] == group_label, \
-                        self.params.data_params.target].tolist()
+                        self.params.data_params.target].to_numpy()
         return group
-
-    def __metric_calc(self, name: str):
-        if name == 'mean':
-            return np.mean
-        elif name == 'median':
-            return np.median
-        else: # default
-            return np.mean
 
     def _manual_ttest(self, A_mean: float, A_var: float, A_size: int, B_mean: float, B_var: float, B_size: int) -> int:
         t_stat_empirical = (A_mean - B_mean) / (A_var / A_size + B_var / B_size) ** (1/2)
@@ -276,8 +251,8 @@ class ABTest:
 
         np.random.shuffle(X)
         np.random.shuffle(Y)
-        X_new = np.array([ self.metric(x) for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
-        Y_new = np.array([ self.metric(y) for y in np.array_split(Y, self.params.hypothesis_params.n_buckets) ])
+        X_new = np.array([ self.params.hypothesis_params(x) for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
+        Y_new = np.array([ self.params.hypothesis_params(y) for y in np.array_split(Y, self.params.hypothesis_params.n_buckets) ])
 
         test_result: int = 0
         if shapiro(X_new)[1] >= self.params.hypothesis_params.alpha and shapiro(Y_new)[1] >= self.params.hypothesis_params.alpha:
@@ -312,9 +287,11 @@ class ABTest:
             for strat in weights.keys():
                 X_strata = X.loc[X[strata_col] == strat, self.params.data_params.target]
                 Y_strata = Y.loc[Y[strata_col] == strat, self.params.data_params.target]
-                x_strata_metric += (self.metric(np.random.choice(X_strata, size=X_strata.shape[0] // 2, replace=False)) * weights[strat])
-                y_strata_metric += (self.metric(np.random.choice(Y_strata, size=Y_strata.shape[0] // 2, replace=False)) * weights[strat])
-            metric_diffs.append(self.metric(x_strata_metric) - self.metric(y_strata_metric))
+                x_strata_metric += (self.params.hypothesis_params
+                                    .metric(np.random.choice(X_strata, size=X_strata.shape[0] // 2, replace=False)) * weights[strat])
+                y_strata_metric += (self.params.hypothesis_params
+                                    .metric(np.random.choice(Y_strata, size=Y_strata.shape[0] // 2, replace=False)) * weights[strat])
+            metric_diffs.append(self.params.hypothesis_params(x_strata_metric) - self.params.hypothesis_params.metric(y_strata_metric))
         pd_metric_diffs = pd.DataFrame(metric_diffs)
 
         left_quant = self.params.hypothesis_params.alpha / 2
@@ -345,7 +322,7 @@ class ABTest:
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
             y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
-            metric_diffs.append( self.metric(x_boot) - self.metric(y_boot) )
+            metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
         pd_metric_diffs = pd.DataFrame(metric_diffs)
 
         left_quant = self.params.hypothesis_params.alpha / 2
@@ -384,7 +361,7 @@ class ABTest:
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
             y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
-            metric_diffs.append( self.metric(x_boot) - self.metric(y_boot) )
+            metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
         pd_metric_diffs = pd.DataFrame(metric_diffs)
 
         left_quant = self.params.hypothesis_params.alpha / 2
@@ -456,8 +433,8 @@ class ABTest:
 
     def __bucketize(self, X: List[float]):
         np.random.shuffle(X)
-        X_new = np.array([ self.metric(x) for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
-        return X_new.tolist()
+        X_new = np.array([ self.params.hypothesis_params.metric(x) for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
+        return X_new
 
     def bucketing(self):
         self.params_new = copy.deepcopy(self.params)
@@ -470,31 +447,28 @@ class ABTest:
         a = self.__get_group('A')
         b = self.__get_group('B')
 
-        if self.params.metric_params.name == 'mean':
-            Graphics().plot_mean_experiment(a, b,
-                                            self.params.hypothesis_params.alternative,
-                                            self.params.metric_params.name,
-                                            self.params.hypothesis_params.alpha,
-                                            self.params.hypothesis_params.beta)
+        Graphics().plot_mean_experiment(a, b,
+                                        self.params.hypothesis_params.alternative,
+                                        'mean',
+                                        self.params.hypothesis_params.alpha,
+                                        self.params.hypothesis_params.beta)
+
 
 
 if __name__ == '__main__':
-    with open("../analysis/configs/auto_ab.config.yaml", "r") as stream:
+    with open("../auto_ab/configs/auto_ab.config.yaml", "r") as stream:
         try:
             ab_config = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             print(exc)
 
-    metric_params = MetricParams(**ab_config['metric_params'])
     data_params = DataParams(**ab_config['data_params'])
     simulation_params = SimulationParams(**ab_config['simulation_params'])
     hypothesis_params = HypothesisParams(**ab_config['hypothesis_params'])
     result_params = ResultParams(**ab_config['result_params'])
     splitter_params = SplitterParams(**ab_config['splitter_params'])
-    # bootstrap_params = BootstrapParams(**ab_config['bootstrap_params'])
 
-    ab_params = ABTestParams(metric_params,
-                             data_params,
+    ab_params = ABTestParams(data_params,
                              simulation_params,
                              hypothesis_params,
                              result_params,

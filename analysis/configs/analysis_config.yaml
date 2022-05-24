@@ -1,3 +1,0 @@
-period_stat_test_params:
-  confidence_level: 0.9
-  bootstrap_iterations_number: 1000
