@@ -95,10 +95,10 @@ class ABTest:
         """
         num = X[self.params.data_params.numerator]
         den = X[self.params.data_params.denominator]
-        mean = num.mean() / den.mean() - X[[self.params.data_params.numerator, self.params.data_params.denominator]].cov()[0, 1] \
+        mean = num.mean() / den.mean() - X[[self.params.data_params.numerator, self.params.data_params.denominator]].cov().iloc[0, 1] \
                / (den.mean() ** 2) + den.var() * num.mean() / (den.mean() ** 3)
         var = (num.mean() ** 2) / (den.mean() ** 2) * (num.var() / (num.mean() ** 2) - \
-                2 * X[[self.params.data_params.numerator, self.params.data_params.denominator]].cov()[0, 1]) \
+                2 * X[[self.params.data_params.numerator, self.params.data_params.denominator]].cov().iloc[0, 1]) \
                 / (num.mean() * den.mean() + den.var() / (den.mean() ** 2))
 
         return (mean, var)
