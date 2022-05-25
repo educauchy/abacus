@@ -219,7 +219,6 @@ class ABTest:
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
-        print(X)
 
         test_result: int = 0
         pvalue: float = 1.0
@@ -284,7 +283,7 @@ class ABTest:
         metric_diffs: List[float] = []
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
-        print(X)
+
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_strata_metric = 0
             y_strata_metric = 0
@@ -323,7 +322,7 @@ class ABTest:
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
-        print(X)
+
         metric_diffs: List[float] = []
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
@@ -362,7 +361,7 @@ class ABTest:
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
-        print(X)
+
         metric_diffs: List[float] = []
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
@@ -393,7 +392,7 @@ class ABTest:
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
-        print(X)
+
         T: int = 0
         for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
