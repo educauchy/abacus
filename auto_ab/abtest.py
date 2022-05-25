@@ -2,11 +2,10 @@ import copy
 import warnings
 import numpy as np
 import pandas as pd
-import os
 import sys
 import yaml
 from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t
-from typing import Dict, Union, Optional, Callable, Tuple, List, Any
+from typing import Dict, Union, Optional, Callable, Tuple, List
 from tqdm.auto import tqdm
 from auto_ab.graphics import Graphics
 from auto_ab.variance_reduction import VarianceReduction
@@ -27,6 +26,8 @@ class ABTest:
                  ) -> None:
         self.dataset = dataset
         self.params = params
+        self.params.data_params.control = self.__get_group('A', self.dataset)
+        self.params.data_params.treatment = self.__get_group('B', self.dataset)
 
     def __str__(self):
         return f"ABTest(alpha={self.params.hypothesis_params.alpha}, " \
@@ -39,6 +40,7 @@ class ABTest:
         group = X.loc[X[self.params.data_params.group_col] == group_label, \
                         self.params.data_params.target].to_numpy()
         return group
+        
 
     def _manual_ttest(self, A_mean: float, A_var: float, A_size: int, B_mean: float, B_var: float, B_size: int) -> int:
         t_stat_empirical = (A_mean - B_mean) / (A_var / A_size + B_var / B_size) ** (1/2)
@@ -61,12 +63,12 @@ class ABTest:
         return test_result
 
     def _linearize(self):
-            X = self.dataset.loc[self.dataset[self.params.data_params.group_col] == 'A']
-            K = round(sum(X[self.params.data_params.numerator]) / sum(X[self.params.data_params.denominator]), 4)
+        X = self.dataset.loc[self.dataset[self.params.data_params.group_col] == 'A']
+        K = round(sum(X[self.params.data_params.numerator]) / sum(X[self.params.data_params.denominator]), 4)
 
-            self.dataset.loc[:, f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"] = \
-                        self.dataset[self.params.data_params.numerator] - K * self.dataset[self.params.data_params.denominator]
-            self.target = f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"
+        self.dataset.loc[:, f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"] = \
+                    self.dataset[self.params.data_params.numerator] - K * self.dataset[self.params.data_params.denominator]
+        self.target = f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"
 
     def _delta_params(self, X: pd.DataFrame) -> Tuple[float, float]:
         """
@@ -160,7 +162,6 @@ class ABTest:
         """
         X = self.dataset[self.dataset[self.params.data_params.group_col] == 'A']
         Y = self.dataset[self.dataset[self.params.data_params.group_col] == 'B']
-
         A_mean, A_var = self._taylor_params(X)
         B_mean, B_var = self._taylor_params(Y)
         test_result: int = self._manual_ttest(A_mean, A_var, X.shape[0], B_mean, B_var, Y.shape[0])
@@ -180,7 +181,6 @@ class ABTest:
         """
         X = self.dataset[self.dataset[self.params.data_params.group_col] == 'A']
         Y = self.dataset[self.dataset[self.params.data_params.group_col] == 'B']
-
         A_mean, A_var = self._delta_params(X)
         B_mean, B_var = self._delta_params(Y)
         test_result: int = self._manual_ttest(A_mean, A_var, X.shape[0], B_mean, B_var, Y.shape[0])
@@ -219,18 +219,21 @@ class ABTest:
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
+        print(X)
 
         test_result: int = 0
         pvalue: float = 1.0
         stat: float = 0.0
-        if self.params.metric_params.name == 'mean':
-            normality_passed = shapiro(X)[1] >= self.params.hypothesis_params.alpha \
-                               and shapiro(Y)[1] >= self.params.hypothesis_params.alpha
+        if self.params.hypothesis_params.metric == np.mean:
+            normality_passed = (shapiro(X)[1] >= self.params.hypothesis_params.alpha 
+                               and shapiro(Y)[1] >= self.params.hypothesis_params.alpha)
             if not normality_passed:
                 warnings.warn('One or both distributions are not normally distributed')
             stat, pvalue = ttest_ind(X, Y, equal_var=False, alternative=self.params.hypothesis_params.alternative)
-        elif self.params.metric_params.name == 'median':
+        elif self.params.hypothesis_params.metric == np.median:
             stat, pvalue = mannwhitneyu(X, Y, alternative=self.params.hypothesis_params.alternative)
+        else:
+            raise ValueError("ABTest.params.hypothesis_params.metric can me only mean or median for test_hypothesis()")
 
         if pvalue <= self.params.hypothesis_params.alpha:
             test_result = 1
@@ -279,8 +282,9 @@ class ABTest:
         :return: Test result: 1 - significant different, 0 - insignificant difference
         """
         metric_diffs: List[float] = []
-        X = self.dataset.loc[self.dataset[self.params.data_params.group_col] == 'A']
-        Y = self.dataset.loc[self.dataset[self.params.data_params.group_col] == 'B']
+        X = self.params.data_params.control
+        Y = self.params.data_params.treatment
+        print(X)
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_strata_metric = 0
             y_strata_metric = 0
@@ -319,7 +323,7 @@ class ABTest:
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
-
+        print(X)
         metric_diffs: List[float] = []
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
@@ -358,7 +362,7 @@ class ABTest:
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
-
+        print(X)
         metric_diffs: List[float] = []
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
@@ -389,7 +393,7 @@ class ABTest:
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
-
+        print(X)
         T: int = 0
         for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
@@ -412,11 +416,11 @@ class ABTest:
                             groups=self.params.data_params.group_col,
                             covariate=self.params.data_params.covariate)
 
-        self.params_new = copy.deepcopy(self.params)
-        self.params_new.data_params.control = self.__get_group('A', result_df)
-        self.params_new.data_params.treatment = self.__get_group('B', result_df)
+        params_new = copy.deepcopy(self.params)
+        params_new.data_params.control = self.__get_group('A', result_df)
+        params_new.data_params.treatment = self.__get_group('B', result_df)
 
-        return ABTest(self.dataset, self.params_new)
+        return ABTest(result_df, params_new)
 
     def cupac(self):
         vr = VarianceReduction()
@@ -427,11 +431,11 @@ class ABTest:
                                factors_now=self.params.data_params.predictors,
                                groups=self.params.data_params.group_col)
 
-        self.params_new = copy.deepcopy(self.params)
-        self.params_new.data_params.control = self.__get_group('A', result_df)
-        self.params_new.data_params.treatment = self.__get_group('B', result_df)
+        params_new = copy.deepcopy(self.params)
+        params_new.data_params.control = self.__get_group('A', result_df)
+        params_new.data_params.treatment = self.__get_group('B', result_df)
 
-        return ABTest(self.dataset, self.params_new)
+        return ABTest(result_df, params_new)
 
     def __bucketize(self, X: List[float]):
         np.random.shuffle(X)
@@ -439,11 +443,11 @@ class ABTest:
         return X_new
 
     def bucketing(self):
-        self.params_new = copy.deepcopy(self.params)
-        self.params_new.data_params.control   = self.__bucketize(self.params.data_params.control)
-        self.params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
+        params_new = copy.deepcopy(self.params)
+        params_new.data_params.control   = self.__bucketize(self.params.data_params.control)
+        params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
 
-        return ABTest(self.dataset, self.params_new)
+        return ABTest(self.dataset, params_new)
 
     def plot(self) -> None:
         a = self.__get_group('A')
