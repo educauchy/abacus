@@ -55,16 +55,20 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         guests_with_splits[split_column] = (guests_with_splits[split_column]
                                             .map({1: 'A', 0: 'B'})
         )
+        if isinstance(grid_element, PrepilotBetaExperiment):
+            guests_with_splits[metric_col].where(guests_with_splits[split_column]=='A', #applied where cond is False
+                                                 guests_with_splits[metric_col]*grid_element.inject, 
+                                                 axis=0,
+                                                 inplace=True)
+            row_dict["MDE"] = [grid_element.inject]
+
         self.abtest_params.data_params.group_col = split_column
         self.abtest_params.data_params.target = metric_col
 
         ab_test = ABTest(guests_with_splits, self.abtest_params)
         ab_test = self.experiment_params.transformations(ab_test)
-
-        if isinstance(grid_element, PrepilotBetaExperiment):
-            ab_test.params.data_params.treatment = ab_test.params.data_params.treatment * grid_element.inject
-            row_dict["MDE"] = [grid_element.inject]
         row_dict["effect_significance"] = self.experiment_params.stat_test(ab_test)["result"]
+
         return pd.DataFrame(row_dict)
 
     def _fill_passed_experiments(self, aggregated_df):
@@ -200,7 +204,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                                      index=["metric", "MDE"],
                                      columns="split_rate",
                                      aggfunc=lambda x: x)
-        res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
+        #res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
         return res_pivoted
 
     @staticmethod
