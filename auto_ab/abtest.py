@@ -25,8 +25,12 @@ class ABTest:
                  dataset: pd.DataFrame,
                  params: ABTestParams = ABTestParams()
                  ) -> None:
-        self.dataset = dataset
+        self.__dataset = dataset
         self.params = params
+
+    @property
+    def dataset(self):
+        return self.__dataset
 
     def __str__(self):
         return f"ABTest(alpha={self.params.hypothesis_params.alpha}, " \
@@ -34,7 +38,7 @@ class ABTest:
                f"alternative='{self.params.hypothesis_params.alternative}')"
 
     def __get_group(self, group_label: str = 'A', df: Optional[pd.DataFrame] = None):
-        X = df if df is not None else self.dataset
+        X = df if df is not None else self.__dataset
 
         group = X.loc[X[self.params.data_params.group_col] == group_label, \
                         self.params.data_params.target].to_numpy()
@@ -61,11 +65,11 @@ class ABTest:
         return test_result
 
     def _linearize(self):
-            X = self.dataset.loc[self.dataset[self.params.data_params.group_col] == 'A']
+            X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'A']
             K = round(sum(X[self.params.data_params.numerator]) / sum(X[self.params.data_params.denominator]), 4)
 
-            self.dataset.loc[:, f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"] = \
-                        self.dataset[self.params.data_params.numerator] - K * self.dataset[self.params.data_params.denominator]
+            self.__dataset.loc[:, f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"] = \
+                        self.__dataset[self.params.data_params.numerator] - K * self.__dataset[self.params.data_params.denominator]
             self.target = f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"
 
     def _delta_params(self, X: pd.DataFrame) -> Tuple[float, float]:
@@ -105,8 +109,8 @@ class ABTest:
 
     def ratio_bootstrap(self, X: pd.DataFrame = None, Y: pd.DataFrame = None) -> stat_test_typing:
         if X is None and Y is None:
-            X = self.dataset[self.dataset[self.params.data_params.group_col] == 'A']
-            Y = self.dataset[self.dataset[self.params.data_params.group_col] == 'B']
+            X = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'A']
+            Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'B']
 
         a_metric_total = sum(X[self.params.data_params.numerator]) / sum(X[self.params.data_params.denominator])
         b_metric_total = sum(Y[self.params.data_params.numerator]) / sum(Y[self.params.data_params.denominator])
@@ -158,8 +162,8 @@ class ABTest:
         Source: http://www.stat.cmu.edu/~hseltman/files/ratio.pdf
         :return: Hypothesis test result: 0 - cannot reject H0, 1 - reject H0
         """
-        X = self.dataset[self.dataset[self.params.data_params.group_col] == 'A']
-        Y = self.dataset[self.dataset[self.params.data_params.group_col] == 'B']
+        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'A']
+        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'B']
 
         A_mean, A_var = self._taylor_params(X)
         B_mean, B_var = self._taylor_params(Y)
@@ -178,8 +182,8 @@ class ABTest:
         Source: https://arxiv.org/pdf/1803.06336.pdf
         :return: Hypothesis test result: 0 - cannot reject H0, 1 - reject H0
         """
-        X = self.dataset[self.dataset[self.params.data_params.group_col] == 'A']
-        Y = self.dataset[self.dataset[self.params.data_params.group_col] == 'B']
+        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'A']
+        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'B']
 
         A_mean, A_var = self._delta_params(X)
         B_mean, B_var = self._delta_params(Y)
@@ -201,36 +205,42 @@ class ABTest:
         :return: None
         """
         if not self.params.data_params.is_grouped:
-            not_ratio_columns = self.dataset.columns[~self.dataset.columns.isin([self.params.data_params.numerator,
+            not_ratio_columns = self.__dataset.columns[~self.__dataset.columns.isin([self.params.data_params.numerator,
                                                                                  self.params.data_params.denominator])].tolist()
-            df_grouped = self.dataset.groupby(by=not_ratio_columns, as_index=False).agg({
+            df_grouped = self.__dataset.groupby(by=not_ratio_columns, as_index=False).agg({
                 self.params.data_params.numerator: 'sum',
                 self.params.data_params.denominator: 'sum'
             })
-            self.dataset = df_grouped
+            self.__dataset = df_grouped
         self._linearize()
 
-    def test_hypothesis(self) -> stat_test_typing:
-        """
-        Perform Welch's t-test / Mann-Whitney test for means/medians
-        :return: Tuple: (test result: 0 - cannot reject H0, 1 - reject H0,
-                        statistics,
-                        p-value)
-        """
+    def test_hypothesis_ttest(self):
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
 
         test_result: int = 0
-        pvalue: float = 1.0
-        stat: float = 0.0
-        if self.params.metric_params.name == 'mean':
-            normality_passed = shapiro(X)[1] >= self.params.hypothesis_params.alpha \
-                               and shapiro(Y)[1] >= self.params.hypothesis_params.alpha
-            if not normality_passed:
-                warnings.warn('One or both distributions are not normally distributed')
-            stat, pvalue = ttest_ind(X, Y, equal_var=False, alternative=self.params.hypothesis_params.alternative)
-        elif self.params.metric_params.name == 'median':
-            stat, pvalue = mannwhitneyu(X, Y, alternative=self.params.hypothesis_params.alternative)
+        normality_passed = shapiro(X)[1] >= self.params.hypothesis_params.alpha \
+                           and shapiro(Y)[1] >= self.params.hypothesis_params.alpha
+        if not normality_passed:
+            warnings.warn('One or both distributions are not normally distributed')
+        stat, pvalue = ttest_ind(X, Y, equal_var=False, alternative=self.params.hypothesis_params.alternative)
+
+        if pvalue <= self.params.hypothesis_params.alpha:
+            test_result = 1
+
+        result = {
+            'stat': stat,
+            'p-value': pvalue,
+            'result': test_result
+        }
+        return result
+
+    def test_hypothesis_mannwhitney(self):
+        X = self.params.data_params.control
+        Y = self.params.data_params.treatment
+
+        test_result: int = 0
+        stat, pvalue = mannwhitneyu(X, Y, alternative=self.params.hypothesis_params.alternative)
 
         if pvalue <= self.params.hypothesis_params.alpha:
             test_result = 1
@@ -252,8 +262,8 @@ class ABTest:
 
         np.random.shuffle(X)
         np.random.shuffle(Y)
-        X_new = np.array([ self.params.hypothesis_params(x) for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
-        Y_new = np.array([ self.params.hypothesis_params(y) for y in np.array_split(Y, self.params.hypothesis_params.n_buckets) ])
+        X_new = np.array([ self.params.hypothesis_params.metric(x) for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
+        Y_new = np.array([ self.params.hypothesis_params.metric(y) for y in np.array_split(Y, self.params.hypothesis_params.n_buckets) ])
 
         test_result: int = 0
         if shapiro(X_new)[1] >= self.params.hypothesis_params.alpha and shapiro(Y_new)[1] >= self.params.hypothesis_params.alpha:
@@ -279,8 +289,8 @@ class ABTest:
         :return: Test result: 1 - significant different, 0 - insignificant difference
         """
         metric_diffs: List[float] = []
-        X = self.dataset.loc[self.dataset[self.params.data_params.group_col] == 'A']
-        Y = self.dataset.loc[self.dataset[self.params.data_params.group_col] == 'B']
+        X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'A']
+        Y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'B']
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_strata_metric = 0
             y_strata_metric = 0
@@ -407,7 +417,7 @@ class ABTest:
 
     def cuped(self):
         vr = VarianceReduction()
-        result_df = vr.cuped(self.dataset,
+        result_df = vr.cuped(self.__dataset,
                             target=self.params.data_params.target,
                             groups=self.params.data_params.group_col,
                             covariate=self.params.data_params.covariate)
@@ -416,11 +426,11 @@ class ABTest:
         self.params_new.data_params.control = self.__get_group('A', result_df)
         self.params_new.data_params.treatment = self.__get_group('B', result_df)
 
-        return ABTest(self.dataset, self.params_new)
+        return ABTest(self.__dataset, self.params_new)
 
     def cupac(self):
         vr = VarianceReduction()
-        result_df = vr.cupac(self.dataset,
+        result_df = vr.cupac(self.__dataset,
                                target_prev=self.params.data_params.target_prev,
                                target_now=self.params.data_params.target,
                                factors_prev=self.params.data_params.predictors_prev,
@@ -431,9 +441,9 @@ class ABTest:
         self.params_new.data_params.control = self.__get_group('A', result_df)
         self.params_new.data_params.treatment = self.__get_group('B', result_df)
 
-        return ABTest(self.dataset, self.params_new)
+        return ABTest(self.__dataset, self.params_new)
 
-    def __bucketize(self, X: List[float]):
+    def __bucketize(self, X: np.ndarray):
         np.random.shuffle(X)
         X_new = np.array([ self.params.hypothesis_params.metric(x) for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
         return X_new
@@ -443,22 +453,18 @@ class ABTest:
         self.params_new.data_params.control   = self.__bucketize(self.params.data_params.control)
         self.params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
 
-        return ABTest(self.dataset, self.params_new)
+        return ABTest(self.__dataset, self.params_new)
 
     def plot(self) -> None:
         a = self.__get_group('A')
         b = self.__get_group('B')
 
-        Graphics().plot_mean_experiment(a, b,
-                                        self.params.hypothesis_params.alternative,
-                                        'mean',
-                                        self.params.hypothesis_params.alpha,
-                                        self.params.hypothesis_params.beta)
+        Graphics().plot_mean_experiment(self.params)
 
 
 
 if __name__ == '__main__':
-    with open("../auto_ab/configs/auto_ab.config.yaml", "r") as stream:
+    with open("./configs/auto_ab.config.yaml", "r") as stream:
         try:
             ab_config = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
