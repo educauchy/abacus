@@ -44,8 +44,6 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         Returns: pandas DataFrame with calculated stat test and experiment parameters
 
         """
-        #ab_test = ABTest(guests_with_splits, self.abtest_params, startup_config=True)
-
         row_dict = {
             "metric": [grid_element.metric_name],
             "split_rate": [(grid_element.control_group_size, grid_element.target_group_size)]
@@ -204,7 +202,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                                      index=["metric", "MDE"],
                                      columns="split_rate",
                                      aggfunc=lambda x: x)
-        #res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
+        res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
         return res_pivoted
 
     @staticmethod
