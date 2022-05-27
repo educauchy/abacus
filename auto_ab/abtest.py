@@ -2,11 +2,10 @@ import copy
 import warnings
 import numpy as np
 import pandas as pd
-import os
 import sys
 import yaml
 from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t
-from typing import Dict, Union, Optional, Callable, Tuple, List, Any
+from typing import Dict, Union, Optional, Callable, Tuple, List
 from tqdm.auto import tqdm
 from auto_ab.graphics import Graphics
 from auto_ab.variance_reduction import VarianceReduction
@@ -27,6 +26,8 @@ class ABTest:
                  ) -> None:
         self.__dataset = dataset
         self.params = params
+        self.params.data_params.control = self.__get_group('A', self.dataset)
+        self.params.data_params.treatment = self.__get_group('B', self.dataset)
 
     @property
     def dataset(self):
@@ -43,6 +44,7 @@ class ABTest:
         group = X.loc[X[self.params.data_params.group_col] == group_label, \
                         self.params.data_params.target].to_numpy()
         return group
+        
 
     def _manual_ttest(self, A_mean: float, A_var: float, A_size: int, B_mean: float, B_var: float, B_size: int) -> int:
         t_stat_empirical = (A_mean - B_mean) / (A_var / A_size + B_var / B_size) ** (1/2)
@@ -99,10 +101,10 @@ class ABTest:
         """
         num = X[self.params.data_params.numerator]
         den = X[self.params.data_params.denominator]
-        mean = num.mean() / den.mean() - X[[self.params.data_params.numerator, self.params.data_params.denominator]].cov()[0, 1] \
+        mean = num.mean() / den.mean() - X[[self.params.data_params.numerator, self.params.data_params.denominator]].cov().iloc[0, 1] \
                / (den.mean() ** 2) + den.var() * num.mean() / (den.mean() ** 3)
         var = (num.mean() ** 2) / (den.mean() ** 2) * (num.var() / (num.mean() ** 2) - \
-                2 * X[[self.params.data_params.numerator, self.params.data_params.denominator]].cov()[0, 1]) \
+                2 * X[[self.params.data_params.numerator, self.params.data_params.denominator]].cov().iloc[0, 1]) \
                 / (num.mean() * den.mean() + den.var() / (den.mean() ** 2))
 
         return (mean, var)
@@ -294,6 +296,7 @@ class ABTest:
         metric_diffs: List[float] = []
         X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'A']
         Y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'B']
+
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_strata_metric = 0
             y_strata_metric = 0
@@ -425,9 +428,9 @@ class ABTest:
                             groups=self.params.data_params.group_col,
                             covariate=self.params.data_params.covariate)
 
-        self.params_new = copy.deepcopy(self.params)
-        self.params_new.data_params.control = self.__get_group('A', result_df)
-        self.params_new.data_params.treatment = self.__get_group('B', result_df)
+        params_new = copy.deepcopy(self.params)
+        params_new.data_params.control = self.__get_group('A', result_df)
+        params_new.data_params.treatment = self.__get_group('B', result_df)
 
         return ABTest(self.__dataset, self.params_new)
 
@@ -440,9 +443,9 @@ class ABTest:
                                factors_now=self.params.data_params.predictors,
                                groups=self.params.data_params.group_col)
 
-        self.params_new = copy.deepcopy(self.params)
-        self.params_new.data_params.control = self.__get_group('A', result_df)
-        self.params_new.data_params.treatment = self.__get_group('B', result_df)
+        params_new = copy.deepcopy(self.params)
+        params_new.data_params.control = self.__get_group('A', result_df)
+        params_new.data_params.treatment = self.__get_group('B', result_df)
 
         return ABTest(self.__dataset, self.params_new)
 
@@ -452,9 +455,9 @@ class ABTest:
         return X_new
 
     def bucketing(self):
-        self.params_new = copy.deepcopy(self.params)
-        self.params_new.data_params.control   = self.__bucketize(self.params.data_params.control)
-        self.params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
+        params_new = copy.deepcopy(self.params)
+        params_new.data_params.control   = self.__bucketize(self.params.data_params.control)
+        params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
 
         return ABTest(self.__dataset, self.params_new)
 
