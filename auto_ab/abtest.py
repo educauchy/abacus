@@ -252,6 +252,9 @@ class ABTest:
         }
         return result
 
+    def test_hypothesis_ztest_ratio(self):
+        pass
+
     def test_hypothesis_buckets(self) -> stat_test_typing:
         """
         Perform buckets hypothesis testing
