@@ -47,6 +47,19 @@ class Splitter:
             self.config['dataset'] = df.to_dict()
             self.dataset = df
 
+    def _split_data(self, split_rate: float) -> None:
+        """
+        Add 'group' column
+        :param split_rate: Split rate of control/treatment
+        :return: None
+        """
+        split_rate: float = self.params.splitter_params.split_rate if split_rate is None else split_rate
+        self.dataset = self.config['splitter'].fit(self.dataset,
+                                                   self.params.data_params.target,
+                                                   self.params.data_params.numerator,
+                                                   self.params.data_params.denominator,
+                                                   split_rate)
+
     def __default_splitter(self, split_rate: float = 0.5):
         A_data, B_data = train_test_split(self.dataset, train_size=split_rate, random_state=0)
         A_data.loc[:, self.config['group_col']] = 'A'
