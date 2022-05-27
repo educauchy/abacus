@@ -5,6 +5,7 @@ import pandas as pd
 import sys
 import yaml
 from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t
+from statsmodels.stats.proportion import proportions_ztest
 from typing import Dict, Union, Optional, Callable, Tuple, List
 from tqdm.auto import tqdm
 from auto_ab.graphics import Graphics
@@ -40,9 +41,13 @@ class ABTest:
 
     def __get_group(self, group_label: str = 'A', df: Optional[pd.DataFrame] = None):
         X = df if df is not None else self.__dataset
-
-        group = X.loc[X[self.params.data_params.group_col] == group_label, \
-                        self.params.data_params.target].to_numpy()
+        group = np.array([])
+        if self.params.hypothesis_params.metric_type == 'solid':
+            group = X.loc[X[self.params.data_params.group_col] == group_label, \
+                            self.params.data_params.target].to_numpy()
+        elif self.params.hypothesis_params.metric_type == 'solid':
+            group = X.loc[X[self.params.data_params.group_col] == group_label, \
+                          self.params.data_params.target_flg].to_numpy()
         return group
         
 
@@ -254,8 +259,24 @@ class ABTest:
         }
         return result
 
-    def test_hypothesis_ztest_ratio(self):
-        pass
+    def test_hypothesis_ztest_prop(self):
+        X = self.__get_group('A')
+        Y = self.__get_group('B')
+
+        count = np.array([sum(X) , sum(Y)])
+        nobs = np.array([len(X), len(Y)])
+        stat, pvalue = proportions_ztest(count, nobs, self.params.hypothesis_params.alpha)
+
+        test_result: int = 0
+        if pvalue <= self.params.hypothesis_params.alpha:
+            test_result = 1
+
+        result = {
+            'stat': stat,
+            'p-value': pvalue,
+            'result': test_result
+        }
+        return result
 
     def test_hypothesis_buckets(self) -> stat_test_typing:
         """
@@ -272,7 +293,7 @@ class ABTest:
 
         test_result: int = 0
         if shapiro(X_new)[1] >= self.params.hypothesis_params.alpha and shapiro(Y_new)[1] >= self.params.hypothesis_params.alpha:
-            _, pvalue = ttest_ind(X_new, Y_new, equal_var=False, alternative=self.params.hypothesis_params.alternative)
+            stat, pvalue = ttest_ind(X_new, Y_new, equal_var=False, alternative=self.params.hypothesis_params.alternative)
             if pvalue <= self.params.hypothesis_params.alpha:
                 test_result = 1
         else:
@@ -282,8 +303,8 @@ class ABTest:
             stat, pvalue, test_result = self.test_hypothesis_boot_confint()
 
         result = {
-            'stat': None,
-            'p-value': None,
+            'stat': stat,
+            'p-value': pvalue,
             'result': test_result
         }
         return result
@@ -470,6 +491,12 @@ class ABTest:
 
 
 if __name__ == '__main__':
+    count = np.array([5, 12])
+    nobs = np.array([83, 99])
+    stat, pvalue = proportions_ztest(count, nobs)
+    print(stat, pvalue)
+    sys.exit(0)
+
     with open("./configs/auto_ab.config.yaml", "r") as stream:
         try:
             ab_config = yaml.safe_load(stream)
