@@ -2,7 +2,6 @@ from typing import Union
 import itertools
 import numpy as np
 import pandas as pd
-from pyspark.sql import DataFrame
 from stratification.params import SplitBuilderParams
 from prepilot.experiment_structures import PrepilotAlphaExperiment, PrepilotBetaExperiment
 from prepilot.abstract_experiment_builder import AbstractExperimentBuilder
@@ -17,7 +16,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
     """
 
     def __init__(self,
-                 guests: DataFrame,
+                 guests: pd.DataFrame,
                  abtest_params: ABTestParams,
                  experiment_params: PrepilotParams,
                  stratification_params: SplitBuilderParams):
@@ -191,18 +190,18 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
 
         res_agg.drop(columns=["sum", "count"], inplace=True)
         res_agg = res_agg.reset_index()
-        res_agg = self._fill_res_with_default(res_agg,
-                                              "beta",
-                                              self.experiment_params.min_beta_score,
-                                              self.experiment_params.max_beta_score)
+        #res_agg = self._fill_res_with_default(res_agg,
+        #                                      "beta",
+        #                                      self.experiment_params.min_beta_score,
+        #                                      self.experiment_params.max_beta_score)
         # append passed experiments
-        res_agg = self._fill_passed_experiments(res_agg)
+        #res_agg = self._fill_passed_experiments(res_agg)
         res_pivoted = pd.pivot_table(res_agg,
                                      values="beta",
                                      index=["metric", "MDE"],
                                      columns="split_rate",
                                      aggfunc=lambda x: x)
-        res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
+        #res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
         return res_pivoted
 
     @staticmethod
