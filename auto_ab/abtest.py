@@ -225,11 +225,18 @@ class ABTest:
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
 
-        test_result: int = 0
         normality_passed = shapiro(X)[1] >= self.params.hypothesis_params.alpha \
                            and shapiro(Y)[1] >= self.params.hypothesis_params.alpha
         if not normality_passed:
             warnings.warn('One or both distributions are not normally distributed')
+        if self.params.hypothesis_params.metric_type != 'solid':
+            warnings.warn('Metric of the test is {}, \
+                        but you use t-test with it'.format(self.params.hypothesis_params.metric_type))
+        if self.params.hypothesis_params.metric_name != 'mean':
+            warnings.warn('Metric of the test is {}, \
+                        but you use t-test with it'.format(self.params.hypothesis_params.metric_name))
+
+        test_result: int = 0
         stat, pvalue = ttest_ind(X, Y, equal_var=False, alternative=self.params.hypothesis_params.alternative)
 
         if pvalue <= self.params.hypothesis_params.alpha:
@@ -245,6 +252,10 @@ class ABTest:
     def test_hypothesis_mannwhitney(self):
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
+
+        if self.params.hypothesis_params.metric_type != 'solid':
+            warnings.warn('Metric of the test is {}, \
+                        but you use mann-whitney test with it'.format(self.params.hypothesis_params.metric_type))
 
         test_result: int = 0
         stat, pvalue = mannwhitneyu(X, Y, alternative=self.params.hypothesis_params.alternative)
@@ -263,8 +274,12 @@ class ABTest:
         X = self.__get_group('A')
         Y = self.__get_group('B')
 
+        if self.params.hypothesis_params.metric_type != 'binary':
+            warnings.warn('Metric of the test is {}, \
+                        but you use z-test for proportions with it'.format(self.params.hypothesis_params.metric_type))
+
         count = np.array([sum(X) , sum(Y)])
-        nobs = np.array([len(X), len(Y)])
+        nobs  = np.array([len(X), len(Y)])
         stat, pvalue = proportions_ztest(count, nobs, self.params.hypothesis_params.alpha)
 
         test_result: int = 0
@@ -288,8 +303,10 @@ class ABTest:
 
         np.random.shuffle(X)
         np.random.shuffle(Y)
-        X_new = np.array([ self.params.hypothesis_params.metric(x) for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
-        Y_new = np.array([ self.params.hypothesis_params.metric(y) for y in np.array_split(Y, self.params.hypothesis_params.n_buckets) ])
+        X_new = np.array([ self.params.hypothesis_params.metric(x)
+                           for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
+        Y_new = np.array([ self.params.hypothesis_params.metric(y)
+                           for y in np.array_split(Y, self.params.hypothesis_params.n_buckets) ])
 
         test_result: int = 0
         if shapiro(X_new)[1] >= self.params.hypothesis_params.alpha and shapiro(Y_new)[1] >= self.params.hypothesis_params.alpha:
@@ -300,6 +317,7 @@ class ABTest:
             def metric(X: np.array):
                 modes, _ = mode(X)
                 return sum(modes) / len(modes)
+            self.params.hypothesis_params.metric = metric
             stat, pvalue, test_result = self.test_hypothesis_boot_confint()
 
         result = {
@@ -453,7 +471,7 @@ class ABTest:
         params_new.data_params.control = self.__get_group('A', result_df)
         params_new.data_params.treatment = self.__get_group('B', result_df)
 
-        return ABTest(self.__dataset, self.params_new)
+        return ABTest(self.__dataset, params_new)
 
     def cupac(self):
         vr = VarianceReduction()
@@ -468,7 +486,7 @@ class ABTest:
         params_new.data_params.control = self.__get_group('A', result_df)
         params_new.data_params.treatment = self.__get_group('B', result_df)
 
-        return ABTest(self.__dataset, self.params_new)
+        return ABTest(self.__dataset, params_new)
 
     def __bucketize(self, X: np.ndarray):
         np.random.shuffle(X)
@@ -480,23 +498,14 @@ class ABTest:
         params_new.data_params.control   = self.__bucketize(self.params.data_params.control)
         params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
 
-        return ABTest(self.__dataset, self.params_new)
+        return ABTest(self.__dataset, params_new)
 
     def plot(self) -> None:
-        a = self.__get_group('A')
-        b = self.__get_group('B')
-
         Graphics().plot_mean_experiment(self.params)
 
 
 
 if __name__ == '__main__':
-    count = np.array([5, 12])
-    nobs = np.array([83, 99])
-    stat, pvalue = proportions_ztest(count, nobs)
-    print(stat, pvalue)
-    sys.exit(0)
-
     with open("./configs/auto_ab.config.yaml", "r") as stream:
         try:
             ab_config = yaml.safe_load(stream)
