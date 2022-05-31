@@ -18,9 +18,9 @@ from auto_ab.params import *
 
 if __name__=="__main__":
 
-    df = pd.read_csv('../notebook/ab_data.csv')
+    df = pd.read_csv('./notebooks/ab_data.csv')
 
-    with open("../auto_ab/configs/auto_ab.config.yaml", "r") as stream:
+    with open("./auto_ab/configs/auto_ab.config.yaml", "r") as stream:
         try:
             ab_config = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
