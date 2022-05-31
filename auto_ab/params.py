@@ -58,6 +58,7 @@ class HypothesisParams:
     strata: str = 'country'
     strata_weights: dict = Field(default={1: 0.8, 2: 0.2})
     metric_type: str = 'solid'
+    metric_name: str = 'mean'
     metric: Union[Callable[[Any], Union[int,float]], str] = np.mean
     n_boot_samples: int = 200
     n_buckets: int = 50

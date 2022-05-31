@@ -32,6 +32,7 @@ hypothesis_params:
   n_boot_samples: 200
   n_buckets: 50
   metric_type: 'solid'
+  metric_name: 'mean'
 result_params:
   to_csv: True
   csv_path: '/app/data/internal/guide/solid_mde.csv'

@@ -69,7 +69,7 @@ class VarianceReduction:
         return X
 
 if __name__ == '__main__':
-    df = pd.read_csv('../../examples/storage/data/ab_data.csv')
+    df = pd.read_csv('../notebooks/ab_data.csv')
 
     vr = VarianceReduction()
     # ans = vr.cupac(df, target_prev='height_prev', target_now='height_now',
