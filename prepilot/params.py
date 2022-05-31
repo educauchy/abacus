@@ -57,10 +57,12 @@ class PrepilotParams:
         assert stat_test in [ABTest.test_hypothesis_boot_confint, 
                              ABTest.test_hypothesis_boot_est,
                              ABTest.test_hypothesis_strat_confint,
-                             ABTest.test_hypothesis,
+                             ABTest.test_hypothesis_mannwhitney,
+                             ABTest.test_hypothesis_ttest,
                              ABTest.delta_method,
                              ABTest.ratio_taylor,
-                             ABTest.ratio_bootstrap
+                             ABTest.ratio_bootstrap,
+                             ABTest.test_boot_hypothesis
                             ]
         return stat_test
 
