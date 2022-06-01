@@ -1,0 +1,31 @@
+name: Run tests on any Push event
+
+on:
+  push:
+    tags:
+      - '!refs/tags/*'
+    branches:
+      - '*'
+env:
+  DEVOPS_DIR: runner
+
+jobs:
+  run_tests:
+    runs-on: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-python@v1
+        with:
+          python-version: '3.9.12'
+          architecture: 'x64'
+      - name: Install cython
+        run: pip install cython==0.29.24
+      - name: Install Jinja
+        run: pip install Jinja2==2.11.3
+      - name: Install numpy
+        run: pip install numpy==1.22.0
+      - name: Install Package
+        run: python setup.py install
+      - name: Test prepilot pipeline
+        run: python ${{ env.DEVOPS_DIR }}/prepilot_pipe.py
+        shell: sh

@@ -1,5 +1,4 @@
 from typing import List, Any, Dict, Optional, Callable, Union
-from click import Abort
 from pydantic import root_validator, validator
 from pydantic.dataclasses import dataclass
 import numpy as np

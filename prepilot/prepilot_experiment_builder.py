@@ -265,9 +265,10 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                                       values="alpha",
                                       index=["metric"],
                                       columns="split_rate")
-                       .style.background_gradient(cmap="YlGn",
-                                                  vmin=0,
-                                                  vmax=1.0))
+                       #.style.background_gradient(cmap="YlGn",
+                       #                           vmin=0,
+                       #                           vmax=1.0)
+                    )
         return res_pivoted
 
     def collect(self) -> pd.DataFrame:
