@@ -25,10 +25,10 @@ class ABTest:
                  dataset: pd.DataFrame,
                  params: ABTestParams = ABTestParams()
                  ) -> None:
-        if self.__check_columns(dataset, params.data_params):
-            self.__dataset = dataset
-        else:
-            raise Exception('One or more columns are not presented in dataframe')
+        #if self.__check_columns(dataset, params.data_params):
+        self.__dataset = dataset
+        #else:
+        #    raise Exception('One or more columns are not presented in dataframe')
 
         self.params = params
         self.params.data_params.control = self.__get_group('A', self.dataset)
