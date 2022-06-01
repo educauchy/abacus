@@ -25,7 +25,11 @@ class ABTest:
                  dataset: pd.DataFrame,
                  params: ABTestParams = ABTestParams()
                  ) -> None:
-        self.__dataset = dataset
+        if self.__check_columns(dataset, params.data_params):
+            self.__dataset = dataset
+        else:
+            raise Exception('One or more columns are not presented in dataframe')
+
         self.params = params
         self.params.data_params.control = self.__get_group('A', self.dataset)
         self.params.data_params.treatment = self.__get_group('B', self.dataset)
@@ -38,6 +42,25 @@ class ABTest:
         return f"ABTest(alpha={self.params.hypothesis_params.alpha}, " \
                f"beta={self.params.hypothesis_params.beta}, " \
                f"alternative='{self.params.hypothesis_params.alternative}')"
+
+    def __check_columns(self, df: pd.DataFrame, params_cols: Any) -> bool:
+        cols = ['id_col', 'group_col', 'target', 'target_flg', 'predictors', 'numerator', 'denominator',
+                'covariate', 'target_prev', 'predictors_prev', 'cluster_col', 'clustering_cols']
+        is_valid_col: bool = True
+        for col in cols:
+            curr_col = getattr(params_cols, col)
+            if isinstance(curr_col, str) and curr_col is not None:
+                if curr_col not in df:
+                    is_valid_col = False
+                    warnings.warn(f'Column {col} is not presented in dataframe')
+                    break
+            elif isinstance(curr_col, list) and curr_col is not None:
+                for curr_c in curr_col:
+                    if curr_c not in df:
+                        is_valid_col = False
+                        warnings.warn(f'Column {col} is not presented in dataframe')
+                        break
+        return is_valid_col
 
     def __get_group(self, group_label: str = 'A', df: Optional[pd.DataFrame] = None):
         X = df if df is not None else self.__dataset
@@ -527,5 +550,5 @@ if __name__ == '__main__':
     df = pd.read_csv('../notebooks/ab_data.csv')
 
     ab_obj = ABTest(df, ab_params)
-    ab_obj = ab_obj.cuped().bucketing()
-    print(ab_obj.params.data_params)
+    # ab_obj = ab_obj.cuped().bucketing()
+    # print(ab_obj.params.data_params)
