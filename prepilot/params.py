@@ -60,8 +60,7 @@ class PrepilotParams:
                              ABTest.test_hypothesis_ttest,
                              ABTest.delta_method,
                              ABTest.ratio_taylor,
-                             ABTest.ratio_bootstrap,
-                             ABTest.test_boot_hypothesis
+                             ABTest.ratio_bootstrap
                             ]
         return stat_test
 
