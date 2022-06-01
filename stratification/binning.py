@@ -63,5 +63,5 @@ def bin_with_clustering(
             "cls": inlabels
         }, index=df_region_labeled.index
     )
-    res = res.assign(label=lambda x: x[params.region_col] + x[f"{params.split_metric_col}_bin"] + x.cls)
+    res = res.assign(label=lambda x: x[params.region_col].astype(str) + x[f"{params.split_metric_col}_bin"] + x.cls)
     return res

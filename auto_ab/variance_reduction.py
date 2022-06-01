@@ -2,11 +2,18 @@ import numpy as np
 import pandas as pd
 from typing import Optional, List
 import statsmodels.api as sm
+from category_encoders.target_encoder import TargetEncoder
 
 
 class VarianceReduction:
     def __init__(self):
         pass
+
+    def _target_encoding(self, X: pd.DataFrame, encoding_colmns:List[str], target_column:str):
+        for col in X[encoding_colmns].select_dtypes(include='O').columns:
+            te=TargetEncoder()
+            X[col]=te.fit_transform(X[col],X[target_column])
+        return X
 
     def _predict_target(self, X: pd.DataFrame, target_prev: str = '',
                        factors_prev: List[str] = None, factors_now: List[str] = None) -> pd.Series:
@@ -40,6 +47,7 @@ class VarianceReduction:
         :param groups: Groups A and B column name
         :return: Pandas DataFrame with additional columns: target_pred and target_now_cuped
         """
+        X = self._target_encoding(X, list(set(factors_prev+factors_now)), target_prev)
         X.loc[:, 'target_pred'] = self._predict_target(X, target_prev, factors_prev, factors_now)
         X_new = self.cuped(X, target_now, groups, 'target_pred')
         return X_new
