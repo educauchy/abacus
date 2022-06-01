@@ -21,6 +21,8 @@ jobs:
       - name: Install cython
         run: pip install cython==0.29.24
       - name: Install numpy
+        run: pip install Jinja2==2.11.3
+      - name: Install numpy
         run: pip install numpy==1.22.0
       - name: Install Package
         run: python setup.py install
