@@ -20,7 +20,7 @@ jobs:
           architecture: 'x64'
       - name: Install cython
         run: pip install cython==0.29.24
-      - name: Install numpy
+      - name: Install Jinja
         run: pip install Jinja2==2.11.3
       - name: Install numpy
         run: pip install numpy==1.22.0
