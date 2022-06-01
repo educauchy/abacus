@@ -10,6 +10,6 @@ setup(
         "numpy == 1.20.3", "pandas >= 1.2.4", "pydantic >= 1.8.1", "scipy >= 1.4.1",
         "SQLAlchemy >= 1.1.15", "pytest >= 6.2", "PyYAML >= 5.4.1", "scikit_learn >= 0.24.2", 
         "fastcore ==  1.4.3", "matplotlib == 3.4.3", "hyperopt == 0.2.7",
-        "seaborn == 0.11.2"
+        "seaborn == 0.11.2", "Jinja2 == 2.11.3"
     ],
 )
