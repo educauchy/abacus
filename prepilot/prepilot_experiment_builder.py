@@ -104,7 +104,6 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         Returns: df with II type error
 
         """
-        df_with_calc["MDE"] = df_with_calc["MDE"].apply(lambda mde: f"{round((mde//1.0 * 100 + mde%1.0 * 100) - 100, 5)}%")
         res_agg = (df_with_calc
                    .groupby(by=["metric", "split_rate", "MDE"])
                    .agg(sum=("effect_significance", sum),
@@ -196,6 +195,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                                               self.experiment_params.max_beta_score)
         # append passed experiments
         res_agg = self._fill_passed_experiments(res_agg)
+        res_agg["MDE"] = res_agg["MDE"].apply(lambda mde: f"{round((mde//1.0 * 100 + mde%1.0 * 100) - 100, 5)}%")
         res_pivoted = pd.pivot_table(res_agg,
                                      values="beta",
                                      index=["metric", "MDE"],

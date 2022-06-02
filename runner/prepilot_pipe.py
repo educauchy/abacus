@@ -76,7 +76,7 @@ if __name__=="__main__":
     ab_params.hypothesis_params.n_boot_samples = 2
 
     for test in POSSIBLE_TESTS:
-
+        print(test)
         prepilot_params = PrepilotParams(
             metrics_names=['height_now'],
             injects=[1.0006,1.0005,1.0004,1.0003],
