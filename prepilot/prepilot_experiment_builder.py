@@ -65,7 +65,6 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         ab_test = ABTest(guests_with_splits, self.abtest_params)
         ab_test = self.experiment_params.transformations(ab_test)
         row_dict["effect_significance"] = self.experiment_params.stat_test(ab_test)["result"]
-
         return pd.DataFrame(row_dict)
 
     def _fill_passed_experiments(self, aggregated_df):
@@ -105,6 +104,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         Returns: df with II type error
 
         """
+        df_with_calc["MDE"] = df_with_calc["MDE"].apply(lambda mde: f"{round((mde//1.0 * 100 + mde%1.0 * 100) - 100, 5)}%")
         res_agg = (df_with_calc
                    .groupby(by=["metric", "split_rate", "MDE"])
                    .agg(sum=("effect_significance", sum),
@@ -190,18 +190,18 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
 
         res_agg.drop(columns=["sum", "count"], inplace=True)
         res_agg = res_agg.reset_index()
-        #res_agg = self._fill_res_with_default(res_agg,
-        #                                      "beta",
-        #                                      self.experiment_params.min_beta_score,
-        #                                      self.experiment_params.max_beta_score)
+        res_agg = self._fill_res_with_default(res_agg,
+                                              "beta",
+                                              self.experiment_params.min_beta_score,
+                                              self.experiment_params.max_beta_score)
         # append passed experiments
-        #res_agg = self._fill_passed_experiments(res_agg)
+        res_agg = self._fill_passed_experiments(res_agg)
         res_pivoted = pd.pivot_table(res_agg,
                                      values="beta",
                                      index=["metric", "MDE"],
                                      columns="split_rate",
                                      aggfunc=lambda x: x)
-        #res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
+        res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
         return res_pivoted
 
     @staticmethod
