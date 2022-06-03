@@ -153,7 +153,7 @@ def add_group_name(guests_data: pd.DataFrame, group_guests_map: Dict[str, List[i
     return guests_data.dropna(subset=["group_name"])
 
 
-def prepare_cat_data(df: pd.DataFrame, params: SplitBuilderParams) -> pd.DataFrame:
+def prepare_cat_data(guests: pd.DataFrame, params: SplitBuilderParams) -> pd.DataFrame:
     """This function converts given categorical features into features suitable for clustering and
     stratification. This functionality is achieved by adding two new features for each categorical
     feature:
@@ -168,12 +168,13 @@ def prepare_cat_data(df: pd.DataFrame, params: SplitBuilderParams) -> pd.DataFra
     second feature (_freq): frequency with noise of the encoded feature
 
     Args:
-        df (pd.DataFrame): DataFrame with stratification data
+        guests (pd.DataFrame): DataFrame with stratification data
         params (SplitBuilderParams): stratification parameters
 
     Return:
         pd.DataFrame: DataFrame with extra columns
     """
+    df = guests.copy()
     n_row = df.shape[0]
     n_top_cat = params.n_top_cat
 
