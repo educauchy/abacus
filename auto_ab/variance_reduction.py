@@ -67,11 +67,11 @@ class VarianceReduction:
 
         cov = X[[target, covariate]].cov().loc[target, covariate]
         var = X[covariate].var()
-        self.theta = cov / var
+        theta = cov / var
 
         for group in X[groups].unique():
             X_subdf = X[X[groups] == group]
-            group_y_cuped = X_subdf[target] - self.theta * (X_subdf[covariate] - X_subdf[covariate].mean())
+            group_y_cuped = X_subdf[target] - theta * (X_subdf[covariate] - X_subdf[covariate].mean())
             X.loc[X[groups] == group, target] = group_y_cuped
 
         return X
