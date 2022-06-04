@@ -25,12 +25,9 @@ class ABTest:
                  dataset: pd.DataFrame,
                  params: ABTestParams = ABTestParams()
                  ) -> None:
-        #if self.__check_columns(dataset, params.data_params):
-        self.__dataset = dataset
-        #else:
-        #    raise Exception('One or more columns are not presented in dataframe')
-
         self.params = params
+        self.__check_columns(dataset, 'init')
+        self.__dataset = dataset
         self.params.data_params.control = self.__get_group('A', self.dataset)
         self.params.data_params.treatment = self.__get_group('B', self.dataset)
 
@@ -43,12 +40,26 @@ class ABTest:
                f"beta={self.params.hypothesis_params.beta}, " \
                f"alternative='{self.params.hypothesis_params.alternative}')"
 
-    def __check_columns(self, df: pd.DataFrame, params_cols: Any) -> bool:
-        cols = ['id_col', 'group_col', 'target', 'target_flg', 'predictors', 'numerator', 'denominator',
-                'covariate', 'target_prev', 'predictors_prev', 'cluster_col', 'clustering_cols']
+    def __check_columns(self, df: pd.DataFrame, method: str) -> None:
+        cols: List[str] = []
+        if method == 'init':
+            cols = ['id_col', 'group_col']
+            if self.params.hypothesis_params.metric_type == 'solid':
+                cols.append('target')
+            elif self.params.hypothesis_params.metric_type == 'binary':
+                cols.append('target_flg')
+            elif self.params.hypothesis_params.metric_type == 'ratio':
+                cols.extend(['numerator', 'denominator'])
+        elif method == 'cuped':
+            cols = ['covariate']
+        elif method == 'cupac':
+            cols = ['predictors_prev', 'target_prev', 'predictors']
+        elif method == 'clustering':
+            cols = ['cluster_col', 'clustering_cols']
+
         is_valid_col: bool = True
         for col in cols:
-            curr_col = getattr(params_cols, col)
+            curr_col = getattr(self.params.data_params, col)
             if isinstance(curr_col, str) and curr_col is not None:
                 if curr_col not in df:
                     is_valid_col = False
@@ -60,7 +71,9 @@ class ABTest:
                         is_valid_col = False
                         warnings.warn(f'Column {col} is not presented in dataframe')
                         break
-        return is_valid_col
+
+        if not is_valid_col:
+            raise Exception('One or more columns are not presented in dataframe')
 
     def __get_group(self, group_label: str = 'A', df: Optional[pd.DataFrame] = None):
         X = df if df is not None else self.__dataset
@@ -252,9 +265,6 @@ class ABTest:
                            and shapiro(Y)[1] >= self.params.hypothesis_params.alpha
         if not normality_passed:
             warnings.warn('One or both distributions are not normally distributed')
-        if self.params.hypothesis_params.metric_type != 'solid':
-            warnings.warn('Metric of the test is {}, \
-                        but you use t-test with it'.format(self.params.hypothesis_params.metric_type))
         if self.params.hypothesis_params.metric_name != 'mean':
             warnings.warn('Metric of the test is {}, \
                         but you use t-test with it'.format(self.params.hypothesis_params.metric_name))
@@ -484,6 +494,7 @@ class ABTest:
         return pvalue
 
     def cuped(self):
+        self.__check_columns(self.__dataset, 'cuped')
         vr = VarianceReduction()
         result_df = vr.cuped(self.__dataset,
                             target=self.params.data_params.target,
@@ -497,6 +508,7 @@ class ABTest:
         return ABTest(self.__dataset, params_new)
 
     def cupac(self):
+        self.__check_columns(self.__dataset, 'cupac')
         vr = VarianceReduction()
         result_df = vr.cupac(self.__dataset,
                                target_prev=self.params.data_params.target_prev,
