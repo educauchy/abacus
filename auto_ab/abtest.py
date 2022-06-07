@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import sys
 import yaml
-from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t
+from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t, chisquare
 from statsmodels.stats.proportion import proportions_ztest
 from typing import Dict, Union, Optional, Callable, Tuple, List
 from tqdm.auto import tqdm
@@ -286,9 +286,9 @@ class ABTest:
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
 
-        if self.params.hypothesis_params.metric_type != 'solid':
+        if self.params.hypothesis_params.metric_name != 'median':
             warnings.warn('Metric of the test is {}, \
-                        but you use mann-whitney test with it'.format(self.params.hypothesis_params.metric_type))
+                        but you use mann-whitney test with it'.format(self.params.hypothesis_params.metric_name))
 
         test_result: int = 0
         stat, pvalue = mannwhitneyu(X, Y, alternative=self.params.hypothesis_params.alternative)
@@ -303,13 +303,28 @@ class ABTest:
         }
         return result
 
-    def test_hypothesis_ztest_prop(self):
+    def test_chisquare(self):
         X = self.__get_group('A')
         Y = self.__get_group('B')
 
-        if self.params.hypothesis_params.metric_type != 'binary':
-            warnings.warn('Metric of the test is {}, \
-                        but you use z-test for proportions with it'.format(self.params.hypothesis_params.metric_type))
+        observed = np.array([sum(Y) , len(Y) - sum(Y)])
+        expected = np.array([sum(X) , len(X) - sum(X)])
+        stat, pvalue = chisquare(observed, expected)
+
+        test_result: int = 0
+        if pvalue <= self.params.hypothesis_params.alpha:
+            test_result = 1
+
+        result = {
+            'stat': stat,
+            'p-value': pvalue,
+            'result': test_result
+        }
+        return result
+
+    def test_hypothesis_ztest_prop(self):
+        X = self.__get_group('A')
+        Y = self.__get_group('B')
 
         count = np.array([sum(X) , sum(Y)])
         nobs  = np.array([len(X), len(Y)])
