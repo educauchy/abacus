@@ -75,22 +75,19 @@ class Graphics:
         plt.show()
 
 if __name__ == '__main__':
-    with open("../analysis/configs/auto_ab.config.yaml", "r") as stream:
+    with open("./configs/auto_ab.config.yaml", "r") as stream:
         try:
             ab_config = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             print(exc)
 
-    metric_params = MetricParams(**ab_config['metric_params'])
     data_params = DataParams(**ab_config['data_params'])
     simulation_params = SimulationParams(**ab_config['simulation_params'])
     hypothesis_params = HypothesisParams(**ab_config['hypothesis_params'])
     result_params = ResultParams(**ab_config['result_params'])
     splitter_params = SplitterParams(**ab_config['splitter_params'])
-    # bootstrap_params = BootstrapParams(**ab_config['bootstrap_params'])
 
-    ab_params = ABTestParams(metric_params,
-                             data_params,
+    ab_params = ABTestParams(data_params,
                              simulation_params,
                              hypothesis_params,
                              result_params,
