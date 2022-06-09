@@ -520,7 +520,7 @@ class ABTest:
         params_new.data_params.control = self.__get_group('A', result_df)
         params_new.data_params.treatment = self.__get_group('B', result_df)
 
-        return ABTest(self.__dataset, params_new)
+        return ABTest(result_df, params_new)
 
     def cupac(self):
         self.__check_columns(self.__dataset, 'cupac')
@@ -536,7 +536,7 @@ class ABTest:
         params_new.data_params.control = self.__get_group('A', result_df)
         params_new.data_params.treatment = self.__get_group('B', result_df)
 
-        return ABTest(self.__dataset, params_new)
+        return ABTest(result_df, params_new)
 
     def __bucketize(self, X: np.ndarray):
         np.random.shuffle(X)
