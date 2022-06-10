@@ -36,7 +36,7 @@ class PrepilotSplitBuilder():
         self.stratification_params = copy.deepcopy(stratification_params)
         self.split_grid = self.build_splits_grid()
         self.split_builder = StratificationSplitBuilder(self.guests, self.stratification_params)
-        #self._update_strat_params()
+
 
     def build_splits_grid(self):
         return list(BaseSplitElement(el[0], el[1])
