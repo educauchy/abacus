@@ -4,7 +4,7 @@ import itertools
 import numpy as np
 import pandas as pd
 from stratification.params import SplitBuilderParams
-from stratification.split_builder import build_split, prepare_cat_data, assign_strata
+from stratification.split_builder import StratificationSplitBuilder
 from prepilot.experiment_structures import BaseSplitElement
 
 
@@ -35,6 +35,7 @@ class PrepilotSplitBuilder():
         self.group_sizes = group_sizes
         self.stratification_params = copy.deepcopy(stratification_params)
         self.split_grid = self.build_splits_grid()
+        self.split_builder = StratificationSplitBuilder(self.guests, self.stratification_params)
         #self._update_strat_params()
 
     def build_splits_grid(self):
@@ -47,8 +48,7 @@ class PrepilotSplitBuilder():
         Returns: pandas DataFrame with columns for splits and injected metrics
 
         """
-        #df_with_injects = self.calc_injected_merics(self.guests)
-        prepilot_df = self.multliple_split(self.guests)
+        prepilot_df = self.multliple_split()
         return prepilot_df
 
     def _update_strat_params(self):
@@ -98,7 +98,7 @@ class PrepilotSplitBuilder():
         }
 
         self.stratification_params.map_group_names_to_sizes = map_group_names_to_sizes
-        guests_groups = build_split(guests_with_strata, self.stratification_params)
+        guests_groups = self.split_builder.build_split(guests_with_strata)
         guests_groups = guests_groups.join(
                         pd.get_dummies(guests_groups["group_name"])
                         .add_prefix("is_")
@@ -107,16 +107,13 @@ class PrepilotSplitBuilder():
         return guests_groups[[self.stratification_params.customer_col
                               ,f"is_control_{control_group_size}_{target_group_size}_{split_number}"]]
 
-    def multliple_split(self, guests_for_split: pd.DataFrame) -> pd.DataFrame:
+    def multliple_split(self) -> pd.DataFrame:
         """Calculate multiple split with stratification
 
         Returns: pandas DataFrame with split columns
 
         """
-        guests_data = prepare_cat_data(guests_for_split, self.stratification_params)
-        guests_data_with_strata = assign_strata(guests_data.reset_index(drop=True), self.stratification_params)
-        del guests_data
-
+        guests_data_with_strata = self.split_builder.assign_strata()
         experiment_guests = self.guests.loc[:, [self.stratification_params.customer_col]]
         for split in self.split_grid:
             experiment_column = f"is_control_{split.control_group_size}_{split.target_group_size}_{split.split_number}"
