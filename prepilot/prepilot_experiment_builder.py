@@ -137,7 +137,8 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         return df
 
     def _calc_beta(self, 
-                   guests_with_splits):
+                   guests_with_splits,
+                   fill_with_default=True):
         """Calculates II type error
 
         Args:
@@ -189,10 +190,11 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
 
         res_agg.drop(columns=["sum", "count"], inplace=True)
         res_agg = res_agg.reset_index()
-        res_agg = self._fill_res_with_default(res_agg,
-                                              "beta",
-                                              self.experiment_params.min_beta_score,
-                                              self.experiment_params.max_beta_score)
+        if fill_with_default:
+            res_agg = self._fill_res_with_default(res_agg,
+                                                "beta",
+                                                self.experiment_params.min_beta_score,
+                                                self.experiment_params.max_beta_score)
         # append passed experiments
         res_agg = self._fill_passed_experiments(res_agg)
         res_agg["MDE"] = res_agg["MDE"].apply(lambda mde: f"{round((mde//1.0 * 100 + mde%1.0 * 100) - 100, 5)}%")
@@ -201,7 +203,8 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                                      index=["metric", "MDE"],
                                      columns="split_rate",
                                      aggfunc=lambda x: x)
-        res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
+        if fill_with_default:
+            res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
         return res_pivoted
 
     @staticmethod
@@ -271,7 +274,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                     )
         return res_pivoted
 
-    def collect(self) -> pd.DataFrame:
+    def collect(self, fill_with_default=True) -> pd.DataFrame:
         """Calculates I and II types error using prepilot parameters.
 
         Args:
@@ -291,7 +294,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
 
         prepilot_guests = prepilot_split_builder.collect()
 
-        beta = self._calc_beta(prepilot_guests)
+        beta = self._calc_beta(prepilot_guests,fill_with_default)
         alpha = self.calc_alpha(prepilot_guests,
                                 is_splited = True)
         return beta, alpha
