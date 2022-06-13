@@ -69,6 +69,6 @@ class PrepilotParams:
     def groups_sizes_validator(cls, values):
         min_group_size = values.get("min_group_size")
         max_group_size = values.get("max_group_size")
-        assert max_group_size > min_group_size, \
+        assert max_group_size >= min_group_size, \
             "max_group_size should be more than min_group_size"
         return values
