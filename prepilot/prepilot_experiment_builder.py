@@ -12,7 +12,7 @@ from auto_ab.params import ABTestParams
 
 
 class PrepilotExperimentBuilder(AbstractExperimentBuilder):
-    """Calculates I and II type errors for different group sizes and injects
+    """Calculates I and II type errors for different group sizes and injects.
     """
 
     def __init__(self,
@@ -22,25 +22,26 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                  stratification_params: SplitBuilderParams):
         """
         Args:
-            guests: dataframe that collected by PrepilotGuestsCollector
-            experiment_params: prameters for prepilot experiments
-
+            guests: dataframe that collected by PrepilotGuestsCollector.
+            abtest_params: A/B tests params. Using for experiments calculations.
+            experiment_params: prameters for prepilot experiments.
+            stratification_params: params for groups splits and stratifications.
         """
         super().__init__(guests, abtest_params, experiment_params)
         self.stratification_params = stratification_params
         self._number_of_decimals = 10
 
-
     def _calc_experiment_grid_cell(self,
                                    guests_with_splits: pd.DataFrame,
                                    grid_element: Union[PrepilotBetaExperiment, PrepilotAlphaExperiment]
-                                   ):
-        """Calculates stat test forr one experiment grid element
+    ) -> pd.DataFrame:
+        """Calculates stat test forr one experiment grid element.
 
         Args:
-            guests_with_splits: dataframe with calculated splits for experiment
+            guests_with_splits: DataFrame with calculated splits for experiment.
+            grid_element: experiment params.
 
-        Returns: pandas DataFrame with calculated stat test and experiment parameters
+        Returns: pandas DataFrame with calculated stat test and experiment parameters.
 
         """
         row_dict = {
@@ -67,13 +68,13 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         row_dict["effect_significance"] = self.experiment_params.stat_test(ab_test)["result"]
         return pd.DataFrame(row_dict)
 
-    def _fill_passed_experiments(self, aggregated_df):
-        """Fill Nan for passed experiments
+    def _fill_passed_experiments(self, aggregated_df) -> pd.DataFrame:
+        """Fill Nan for passed experiments.
 
         Args:
-            aggregated_df: dataframe with calculated experiments
+            aggregated_df: dataframe with calculated experiments.
 
-        Returns: pandas DataFrame with filled values
+        Returns: pandas DataFrame with filled values.
 
         """
         for metric in self._experiment_params.metrics_names:
@@ -95,13 +96,13 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                     aggregated_df = pd.concat([aggregated_df, df_passed])
         return aggregated_df
 
-    def _beta_score_calculation(self, df_with_calc: pd.DataFrame):
-        """Calculates II type error for df with calculated experiments
+    def _beta_score_calculation(self, df_with_calc: pd.DataFrame) -> pd.DataFrame:
+        """Calculates II type error for df with calculated experiments.
 
         Args:
-            beta_scores: dataframe with calculated experiments
+            df_with_calc: dataframe with calculated experiments.
 
-        Returns: df with II type error
+        Returns: df with II type error.
 
         """
         res_agg = (df_with_calc
@@ -117,16 +118,17 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
     def _fill_res_with_default(df: pd.DataFrame,
                            column_name: str,
                            min_val: float,
-                           max_val: float):
-        """Fill column with defalt values
+                           max_val: float
+    ) -> pd.DataFrame:
+        """Fill column with defalt values.
 
         Args:
-            df: pandas Datafrmae for replace default values
-            column_name: df's column name for replace values
-            min_val: minimal value for replace
-            max_val: maximal value for replace
+            df: pandas Datafrmae for replace default values.
+            column_name: df's column name for replace values.
+            min_val: minimal value for replace.
+            max_val: maximal value for replace.
 
-        Returns: df with replaced values
+        Returns: df with replaced values.
 
         """
         df[column_name] = np.where(df[column_name] >= max_val,
@@ -137,13 +139,16 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         return df
 
     def _calc_beta(self, 
-                   guests_with_splits):
-        """Calculates II type error
+                   guests_with_splits,
+                   fill_with_default=True
+    ) -> pd.DataFrame:
+        """Calculates II type error.
 
         Args:
-            guests_with_splits: dataframe with precalculated splits
+            guests_with_splits: dataframe with precalculated splits.
+            fill_with_default: fill calculated vaules with defaults.
 
-        Returns: pandas DataFrame with II type error
+        Returns: pandas DataFrame with II type error.
 
         """
         beta_scores = pd.DataFrame()
@@ -189,10 +194,11 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
 
         res_agg.drop(columns=["sum", "count"], inplace=True)
         res_agg = res_agg.reset_index()
-        res_agg = self._fill_res_with_default(res_agg,
-                                              "beta",
-                                              self.experiment_params.min_beta_score,
-                                              self.experiment_params.max_beta_score)
+        if fill_with_default:
+            res_agg = self._fill_res_with_default(res_agg,
+                                                "beta",
+                                                self.experiment_params.min_beta_score,
+                                                self.experiment_params.max_beta_score)
         # append passed experiments
         res_agg = self._fill_passed_experiments(res_agg)
         res_agg["MDE"] = res_agg["MDE"].apply(lambda mde: f"{round((mde//1.0 * 100 + mde%1.0 * 100) - 100, 5)}%")
@@ -201,7 +207,8 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                                      index=["metric", "MDE"],
                                      columns="split_rate",
                                      aggfunc=lambda x: x)
-        res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
+        if fill_with_default:
+            res_pivoted.replace(0, f"<={self.experiment_params.min_beta_score}", inplace=True)
         return res_pivoted
 
     @staticmethod
@@ -221,16 +228,14 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
 
     def calc_alpha(self, guests: pd.DataFrame,
                    is_splited: bool = False):
-        """Calculates I type error
+        """Calculates I type error.
 
         Args:
-            guests: dataframe with guests
-            stratification_params: params for stratification
+            guests: dataframe with guests.
             is_splited: if False guests must contain splits for calculation.
-            Otherwise splits will be compute for guests
+            Otherwise splits will be compute for guests.
 
-        Returns: pandas DataFrame with I type error
-
+        Returns: pandas DataFrame with I type error.
         """
         if not is_splited:
             prepilot_guests_collector = PrepilotSplitBuilder(guests, self.experiment_params.metrics_names,
@@ -271,13 +276,12 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                     )
         return res_pivoted
 
-    def collect(self) -> pd.DataFrame:
+    def collect(self, fill_with_default=True) -> pd.DataFrame:
         """Calculates I and II types error using prepilot parameters.
 
         Args:
             stratification_params: params for stratification
-            full: if True function will return full dataframe with results.
-            Otherwise will be returned only max calculated MDE for each size.
+            fill_with_default: fill calculated vaules with defaults.
 
         Returns: pandas DataFrames with aggregated results of experiment.
 
@@ -291,7 +295,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
 
         prepilot_guests = prepilot_split_builder.collect()
 
-        beta = self._calc_beta(prepilot_guests)
+        beta = self._calc_beta(prepilot_guests,fill_with_default)
         alpha = self.calc_alpha(prepilot_guests,
                                 is_splited = True)
         return beta, alpha

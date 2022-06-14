@@ -11,6 +11,8 @@ from tqdm.auto import tqdm
 from auto_ab.graphics import Graphics
 from auto_ab.variance_reduction import VarianceReduction
 from auto_ab.params import ABTestParams
+from resplitter.resplit_builder import ResplitBuilder
+from resplitter.params import ResplitParams
 
 sys.path.append('..')
 from auto_ab.params import *
@@ -56,6 +58,8 @@ class ABTest:
             cols = ['predictors_prev', 'target_prev', 'predictors']
         elif method == 'clustering':
             cols = ['cluster_col', 'clustering_cols']
+        elif method == 'resplit_df':
+            cols = ['strata_col']
 
         is_valid_col: bool = True
         for col in cols:
@@ -620,6 +624,16 @@ class ABTest:
             None
         """
         Graphics().plot_mean_experiment(self.params)
+
+    def resplit_df(self):
+        resplit_params = ResplitParams(
+            group_col = self.params.data_params.group_col,
+            strata_col = self.params.data_params.strata_col
+        )
+        resplitter = ResplitBuilder(self.__dataset, resplit_params)
+        new_dataset = resplitter.collect()
+
+        return ABTest(new_dataset, self.params)
 
 
 

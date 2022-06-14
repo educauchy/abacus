@@ -4,7 +4,7 @@ import itertools
 import numpy as np
 import pandas as pd
 from stratification.params import SplitBuilderParams
-from stratification.split_builder import build_split, prepare_cat_data, assign_strata
+from stratification.split_builder import StratificationSplitBuilder
 from prepilot.experiment_structures import BaseSplitElement
 
 
@@ -18,15 +18,15 @@ class PrepilotSplitBuilder():
                  group_sizes: List[int],
                  stratification_params: SplitBuilderParams,
                  iterations_number: int = 10):
-        """There is class for calculation columns with injetcs and target/control splits
+        """Builds splits for experiments
 
         Args:
             guests: dataframe with data for calculations injects and splits
             metrics_names: list of metrics for which will be calculate injects columns
+            injects: list of injects
             group_sizes: list of group sizes for split building
             stratification_params: stratification parameters
             iterations_number: number of columns that will be build for each group size
-
         """
         self.guests = guests
         self.metrics_names = metrics_names
@@ -34,21 +34,19 @@ class PrepilotSplitBuilder():
         self.iterations_number = iterations_number
         self.group_sizes = group_sizes
         self.stratification_params = copy.deepcopy(stratification_params)
-        self.split_grid = self.build_splits_grid()
-        #self._update_strat_params()
+        self.split_grid = self._build_splits_grid()
+        self.split_builder = StratificationSplitBuilder(self.guests, self.stratification_params)
 
-    def build_splits_grid(self):
+    def _build_splits_grid(self):
         return list(BaseSplitElement(el[0], el[1])
                     for el in itertools.product(self.group_sizes, np.arange(1, self.iterations_number+1)))
 
-    def collect(self):
+    def collect(self) -> pd.DataFrame:
         """Builds dataframe with data for prepilot experiments
 
         Returns: pandas DataFrame with columns for splits and injected metrics
-
         """
-        #df_with_injects = self.calc_injected_merics(self.guests)
-        prepilot_df = self.multliple_split(self.guests)
+        prepilot_df = self.multliple_split()
         return prepilot_df
 
     def _update_strat_params(self):
@@ -90,7 +88,6 @@ class PrepilotSplitBuilder():
             split_number: number of split. Uses as suffix for new column
 
         Returns: pandas DataFrame with split
-
         """
         map_group_names_to_sizes={
             "control": control_group_size,
@@ -98,7 +95,7 @@ class PrepilotSplitBuilder():
         }
 
         self.stratification_params.map_group_names_to_sizes = map_group_names_to_sizes
-        guests_groups = build_split(guests_with_strata, self.stratification_params)
+        guests_groups = self.split_builder.build_split(guests_with_strata)
         guests_groups = guests_groups.join(
                         pd.get_dummies(guests_groups["group_name"])
                         .add_prefix("is_")
@@ -107,16 +104,12 @@ class PrepilotSplitBuilder():
         return guests_groups[[self.stratification_params.customer_col
                               ,f"is_control_{control_group_size}_{target_group_size}_{split_number}"]]
 
-    def multliple_split(self, guests_for_split: pd.DataFrame) -> pd.DataFrame:
+    def multliple_split(self) -> pd.DataFrame:
         """Calculate multiple split with stratification
 
         Returns: pandas DataFrame with split columns
-
         """
-        guests_data = prepare_cat_data(guests_for_split, self.stratification_params)
-        guests_data_with_strata = assign_strata(guests_data.reset_index(drop=True), self.stratification_params)
-        del guests_data
-
+        guests_data_with_strata = self.split_builder.assign_strata()
         experiment_guests = self.guests.loc[:, [self.stratification_params.customer_col]]
         for split in self.split_grid:
             experiment_column = f"is_control_{split.control_group_size}_{split.target_group_size}_{split.split_number}"

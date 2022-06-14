@@ -17,6 +17,7 @@ class DataParams:
     path: str = '../notebooks/ab_data.csv'
     id_col: str = 'id'
     group_col: str = 'groups'
+    strata_col: str = 'country'
     target: str = 'height_now'
     target_flg: str = 'bought'
     predictors: List[str] = Field(default=['weight_now'])
