@@ -54,7 +54,7 @@ class PrepilotParams:
 
     @validator("variance_reduction", always=True)
     @classmethod
-    def alternative_validator(cls, variance_reduction):
+    def variance_reduction_validator(cls, variance_reduction):
         assert variance_reduction in [ABTest.cuped, ABTest.cupac, None]
         return variance_reduction
 
