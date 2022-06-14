@@ -13,18 +13,23 @@ class ParallelExperiments:
         self.n_buckets = n_buckets
 
     def _modulo(self):
-        """
-        Create buckets using module approach
+        """ Creates buckets using module approach
+
+        Returns:
+            None
         """
         self.dataset['bucket_id'] = np.remainder( self.dataset[self.id_col].to_numpy(),
                                                   self.n_buckets)
 
     def _hashing(self, hash_func: Optional[str] = None, salt: Optional[str] = None):
-        """
-        Create buckets using hash function approach
-        :param hash_func: Hash function
-        :param salt: Salt string for the experiment
-        :return: Pandas DataFrame extended by column 'bucket_id'
+        """ Creates buckets using hash function approach
+
+        Args:
+            hash_func: Hash function
+            salt: Salt string for the experiment
+
+        Returns:
+            None
         """
         if salt is None:
             salt = secrets.token_hex(8)

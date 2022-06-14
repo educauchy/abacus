@@ -27,11 +27,14 @@ class Simulation:
 
     def _add_increment(self, X: Union[pd.DataFrame, np.array] = None,
                        inc_value: Union[float, int] = None) -> np.array:
-        """
-        Add constant increment to a list
-        :param X: Numpy array to modify
-        :param inc_value: Constant addendum to each value
-        :returns: Modified X array
+        """ Add constant increment to a list
+
+        Args:
+            :param X: Numpy array to modify
+            :param inc_value: Constant addendum to each value
+
+        Returns:
+            Modified X array
         """
         if self.config['metric_type'] == 'solid':
             return X + inc_value
@@ -92,19 +95,22 @@ class Simulation:
                        metric: Optional[Callable[[Any], float]] = None, strata_weights: Optional[Dict[str, float]] = None,
                        use_correction: Optional[bool] = True, to_csv: bool = False,
                        csv_path: str = None, verbose: bool = False) -> Dict[float, Dict[float, float]]:
-        """
-        Simulation process of determining appropriate split rate and increment rate for experiment
-        :param n_iter: Number of iterations of simulation
-        :param strategy: Name of strategy to use in experiment assessment
-        :param strata: Strata column
-        :param n_boot_samples: Number of bootstrap samples
-        :param n_buckets: Number of buckets
-        :param metric: Custom metric (mean, median, percentile (1, 2, ...), etc
-        :param strata_weights: Pre-experiment weights for strata column
-        :param use_correction: Whether or not to use correction for multiple tests
-        :param to_csv: Whether or not to save result to a .csv file
-        :param csv_path: CSV file path
-        :return: Dict with ratio of hypotheses rejected under certain split rate and increment
+        """ Simulation process of determining appropriate split rate and increment rate for experiment
+
+        Args:
+            n_iter: Number of iterations of simulation
+            strategy: Name of strategy to use in experiment assessment
+            strata: Strata column
+            n_boot_samples: Number of bootstrap samples
+            n_buckets: Number of buckets
+            metric: Custom metric (mean, median, percentile (1, 2, ...), etc
+            strata_weights: Pre-experiment weights for strata column
+            use_correction: Whether or not to use correction for multiple tests
+            to_csv: Whether or not to save result to a .csv file
+            csv_path: CSV file path
+
+        Returns:
+            Dict with ratio of hypotheses rejected under certain split rate and increment
         """
         if n_boot_samples < 1:
             raise Exception('Number of bootstrap samples must be 1 or more. Your input: {}.'.format(n_boot_samples))
@@ -222,12 +228,15 @@ class Simulation:
 
     def sample_size(self, std: float = None, effect_size: float = None,
                     split_ratios: Tuple[float, float] = None) -> Tuple[int, int]:
-        """
-        Calculation of sample size for each test group
-        :param std: Standard deviation of a test metric
-        :param effect_size: Lift in metric
-        :param group_shares: Shares of A and B groups
-        :return: Number of observations needed in each group
+        """ Calculation of sample size for each test group
+
+        Args:
+            :param std: Standard deviation of a test metric
+            :param effect_size: Lift in metric
+            :param group_shares: Shares of A and B groups
+
+        Returns:
+            Number of observations needed in each group
         """
         control_share, treatment_share = split_ratios if split_ratios is not None else self.config['split_ratios']
         if treatment_share == 0.5:
@@ -242,11 +251,14 @@ class Simulation:
             return (a_samples, b_samples)
 
     def mde(self, std: float = None, n_samples: int = None) -> float:
-        """
-        Calculate Minimum Detectable Effect using Margin of Error formula
-        :param std: Pooled standard deviatioin
-        :param n_samples: Number of samples for each group
-        :return: MDE, in absolute lift
+        """ Calculate Minimum Detectable Effect using Margin of Error formula
+
+        Args:
+            std: Pooled standard deviatioin
+            n_samples: Number of samples for each group
+
+        Returns:
+            MDE, in absolute lift
         """
         alpha: float = (1 - self.config['alpha'] / 2) if self.config['alternative'] == 'two-sided' else (1 - self.config['alpha'])
         mde: float = np.sqrt( 2 * (t.ppf(alpha) + t.ppf(1 - self.config['beta'])) * std / n_samples )

@@ -17,13 +17,16 @@ class VarianceReduction:
 
     def _predict_target(self, X: pd.DataFrame, target_prev: str = '',
                        factors_prev: List[str] = None, factors_now: List[str] = None) -> pd.Series:
-        """
-        Simple linear regression for covariate prediction
-        :param X: Pandas DataFrame
-        :param target_prev: Target on previous period column name
-        :param factors_prev: Factor columns for modelling
-        :param factors_now: Factor columns for prediction on current period
-        :return: Pandas Series with predicted values
+        """ Simple linear regression for covariate prediction
+
+        Args:
+            X: Pandas DataFrame
+            target_prev: Target on previous period column name
+            factors_prev: Factor columns for modelling
+            factors_now: Factor columns for prediction on current period
+
+        Returns:
+            Pandas Series with predicted values
         """
         Y = X[target_prev]
         X_train = X[factors_prev]
@@ -35,17 +38,20 @@ class VarianceReduction:
 
     def cupac(self, X: pd.DataFrame, target_prev: str = '', target_now: str = '',
               factors_prev: List[str] = None, factors_now: List[str] = None, groups: str = '') -> pd.DataFrame:
-        """
-        Perform CUPAC with prediction of target column on experiment period.
+        """ Perform CUPAC with prediction of target column on experiment period.
         Original paper: https://doordash.engineering/2020/06/08/improving-experimental-power-through-control-using-predictions-as-covariate-cupac/.
         Previous period = before experiment, now_period = after experiment.
-        :param X: Pandas DataFrame for analysis
-        :param target_prev: Target on previous period column name
-        :param target_now: Target on current period column name
-        :param factors_prev: Factor columns for modelling
-        :param factors_now: Factor columns for prediction on current period
-        :param groups: Groups A and B column name
-        :return: Pandas DataFrame with additional columns: target_pred and target_now_cuped
+
+        Args:
+            X: Pandas DataFrame for analysis
+            target_prev: Target on previous period column name
+            target_now: Target on current period column name
+            factors_prev: Factor columns for modelling
+            factors_now: Factor columns for prediction on current period
+            groups: Groups A and B column name
+
+        Returns:
+            Pandas DataFrame with additional columns: target_pred and target_now_cuped
         """
         X = self._target_encoding(X, list(set(factors_prev+factors_now)), target_prev)
         X.loc[:, 'target_pred'] = self._predict_target(X, target_prev, factors_prev, factors_now)
@@ -54,14 +60,17 @@ class VarianceReduction:
 
     def cuped(self, df: pd.DataFrame, target: str = '', groups: str = '',
               covariate: Optional[str] = None) -> pd.DataFrame:
-        """
-        Perform CUPED on target column with known/unknown covariate.
+        """ Perform CUPED on target column with known/unknown covariate.
         Original paper: https://exp-platform.com/Documents/2013-02-CUPED-ImprovingSensitivityOfControlledExperiments.pdf.
-        :param df: Pandas DataFrame for analysis
-        :param target: Target column name
-        :param groups: Groups A and B column name
-        :param covariate: Covariate column name. If None, then most correlated column in considered as covariate
-        :return: Pandas DataFrame with additional target CUPEDed column
+
+        Args:
+            df: Pandas DataFrame for analysis
+            target: Target column name
+            groups: Groups A and B column name
+            covariate: Covariate column name. If None, then most correlated column in considered as covariate
+
+        Returns:
+            Pandas DataFrame with additional target CUPEDed column
         """
         X = df.copy()
 

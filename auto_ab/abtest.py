@@ -20,7 +20,7 @@ metric_name_typing = Union[str, Callable[[np.array], Union[int, float]]]
 stat_test_typing = Dict[ str, Union[int, float] ]
 
 class ABTest:
-    """Perform AB-test"""
+    """Performs AB-test"""
     def __init__(self,
                  dataset: pd.DataFrame,
                  params: ABTestParams = ABTestParams()
@@ -116,10 +116,13 @@ class ABTest:
             self.target = f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"
 
     def _delta_params(self, X: pd.DataFrame) -> Tuple[float, float]:
-        """
-        Calculated expectation and variance for ratio metric using delta approximation
-        :param X: Pandas DataFrame of particular group (A, B, etc)
-        :return: Tuple with mean and variance of ratio
+        """ Calculated expectation and variance for ratio metric using delta approximation
+
+        Args:
+            X: Pandas DataFrame of particular group (A, B, etc)
+
+        Returns:
+             Tuple with mean and variance of ratio
         """
         num = X[self.params.data_params.numerator]
         den = X[self.params.data_params.denominator]
@@ -135,10 +138,13 @@ class ABTest:
         return (mean, var)
 
     def _taylor_params(self, X: pd.DataFrame) -> Tuple[float, float]:
-        """
-        Calculated expectation and variance for ratio metric using Taylor expansion approximation
-        :param X: Pandas DataFrame of particular group (A, B, etc)
-        :return: Tuple with mean and variance of ratio
+        """ Calculated expectation and variance for ratio metric using Taylor expansion approximation
+
+        Args:
+            X: Pandas DataFrame of particular group (A, B, etc)
+
+        Returns:
+            Tuple with mean and variance of ratio
         """
         num = X[self.params.data_params.numerator]
         den = X[self.params.data_params.denominator]
@@ -151,6 +157,12 @@ class ABTest:
         return (mean, var)
 
     def ratio_bootstrap(self, X: pd.DataFrame = None, Y: pd.DataFrame = None) -> stat_test_typing:
+        """Performs bootstrap for ratio-metric
+
+        Returns:
+            Dictionary with following properties: test statistic, p-value, test result
+            Test result: 1 - significant different, 0 - insignificant difference
+        """
         if X is None and Y is None:
             X = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'A']
             Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'B']
@@ -199,11 +211,12 @@ class ABTest:
         return result
 
     def ratio_taylor(self) -> stat_test_typing:
-        """
-        Calculate expectation and variance of ratio for each group
-        and then use t-test for hypothesis testing
+        """ Calculate expectation and variance of ratio for each group and then use t-test for hypothesis testing
         Source: http://www.stat.cmu.edu/~hseltman/files/ratio.pdf
-        :return: Hypothesis test result: 0 - cannot reject H0, 1 - reject H0
+
+        Returns:
+            Dictionary with following properties: test statistic, p-value, test result
+            Test result: 1 - significant different, 0 - insignificant difference
         """
         X = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'A']
         Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'B']
@@ -220,10 +233,12 @@ class ABTest:
         return result
 
     def delta_method(self) -> stat_test_typing:
-        """
-        Delta method with bias correction for ratios
+        """ Delta method with bias correction for ratios
         Source: https://arxiv.org/pdf/1803.06336.pdf
-        :return: Hypothesis test result: 0 - cannot reject H0, 1 - reject H0
+
+        Returns:
+            Dictionary with following properties: test statistic, p-value, test result
+            Test result: 1 - significant different, 0 - insignificant difference
         """
         X = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'A']
         Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'B']
@@ -240,12 +255,14 @@ class ABTest:
         return result
 
     def linearization(self) -> None:
-        """
+        """Creates linearized continuous metric based on ratio-metric
         Important: there is an assumption that all data is already grouped by user
         s.t. numerator for user = sum of numerators for user for different time periods
         and denominator for user = sum of denominators for user for different time periods
         Source: https://research.yandex.com/publications/148
-        :return: None
+
+        Returns:
+            None
         """
         if not self.params.data_params.is_grouped:
             not_ratio_columns = self.__dataset.columns[~self.__dataset.columns.isin([self.params.data_params.numerator,
@@ -258,6 +275,12 @@ class ABTest:
         self._linearize()
 
     def test_hypothesis_ttest(self):
+        """Performs Student's t-test
+
+        Returns:
+            Dictionary with following properties: test statistic, p-value, test result
+            Test result: 1 - significant different, 0 - insignificant difference
+        """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
 
@@ -283,6 +306,12 @@ class ABTest:
         return result
 
     def test_hypothesis_mannwhitney(self):
+        """Performs Mann-Whitney test
+
+        Returns:
+            Dictionary with following properties: test statistic, p-value, test result
+            Test result: 1 - significant different, 0 - insignificant difference
+        """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
 
@@ -304,6 +333,12 @@ class ABTest:
         return result
 
     def test_chisquare(self):
+        """Performs Chi-Square test
+
+        Returns:
+            Dictionary with following properties: test statistic, p-value, test result
+            Test result: 1 - significant different, 0 - insignificant difference
+        """
         X = self.__get_group('A')
         Y = self.__get_group('B')
 
@@ -323,6 +358,12 @@ class ABTest:
         return result
 
     def test_hypothesis_ztest_prop(self):
+        """Performs z-test for proportions
+
+        Returns:
+            Dictionary with following properties: test statistic, p-value, test result
+            Test result: 1 - significant different, 0 - insignificant difference
+        """
         X = self.__get_group('A')
         Y = self.__get_group('B')
 
@@ -342,9 +383,11 @@ class ABTest:
         return result
 
     def test_hypothesis_buckets(self) -> stat_test_typing:
-        """
-        Perform buckets hypothesis testing
-        :return: Test result: 1 - significant different, 0 - insignificant difference
+        """ Performs buckets hypothesis testing
+
+        Returns:
+            Dictionary with following properties: test statistic, p-value, test result
+            Test result: 1 - significant different, 0 - insignificant difference
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
@@ -376,9 +419,11 @@ class ABTest:
         return result
 
     def test_hypothesis_strat_confint(self) -> stat_test_typing:
-        """
-        Perform stratification with confidence interval
-        :return: Test result: 1 - significant different, 0 - insignificant difference
+        """ Performs stratification with confidence interval
+
+        Returns
+            Dictionary with following properties: test statistic, p-value, test result
+            Test result: 1 - significant different, 0 - insignificant difference
         """
         metric_diffs: List[float] = []
         X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'A']
@@ -416,9 +461,10 @@ class ABTest:
         return result
 
     def test_hypothesis_boot_est(self) -> stat_test_typing:
-        """
-        Perform bootstrap confidence interval with
-        :returns: Type I error rate
+        """ Performs bootstrap confidence interval with
+
+        Returns:
+            Dictionary with following properties: test statistic, p-value, test result
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
@@ -455,9 +501,10 @@ class ABTest:
         return result
 
     def test_hypothesis_boot_confint(self) -> stat_test_typing:
-        """
-        Perform bootstrap confidence interval
-        :returns: Ratio of rejected H0 hypotheses to number of all tests
+        """ Performs bootstrap confidence interval
+
+        Returns:
+            Dictionary with following properties: test statistic, p-value, test result
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
@@ -486,9 +533,10 @@ class ABTest:
         return result
 
     def test_boot_hypothesis(self) -> float:
-        """
-        Perform T-test for independent samples with unequal number of observations and variance
-        :returns: Ratio of rejected H0 hypotheses to number of all tests
+        """ Performs T-test for independent samples with unequal number of observations and variance
+
+        Returns:
+            Ratio of rejected H0 hypotheses to number of all tests
         """
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
@@ -509,6 +557,11 @@ class ABTest:
         return pvalue
 
     def cuped(self):
+        """Performs CUPED for variance reduction
+
+        Returns:
+            New instance of ABTest class with modified control and treatment
+        """
         self.__check_columns(self.__dataset, 'cuped')
         vr = VarianceReduction()
         result_df = vr.cuped(self.__dataset,
@@ -523,6 +576,11 @@ class ABTest:
         return ABTest(result_df, params_new)
 
     def cupac(self):
+        """Performs CUPAC for variance reduction
+
+        Returns:
+            New instance of ABTest class with modified control and treatment
+        """
         self.__check_columns(self.__dataset, 'cupac')
         vr = VarianceReduction()
         result_df = vr.cupac(self.__dataset,
@@ -538,12 +596,17 @@ class ABTest:
 
         return ABTest(result_df, params_new)
 
-    def __bucketize(self, X: np.ndarray):
+    def __bucketize(self, X: np.ndarray) -> np.ndarray:
         np.random.shuffle(X)
         X_new = np.array([ self.params.hypothesis_params.metric(x) for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
         return X_new
 
     def bucketing(self):
+        """Performs bucketing in order to accelerate results computation
+
+        Returns:
+            New instance of ABTest class with modified control and treatment
+        """
         params_new = copy.deepcopy(self.params)
         params_new.data_params.control   = self.__bucketize(self.params.data_params.control)
         params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
@@ -551,6 +614,11 @@ class ABTest:
         return ABTest(self.__dataset, params_new)
 
     def plot(self) -> None:
+        """Plot experiment
+
+        Returns:
+            None
+        """
         Graphics().plot_mean_experiment(self.params)
 
 

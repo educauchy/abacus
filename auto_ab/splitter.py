@@ -48,10 +48,12 @@ class Splitter:
             self.dataset = df
 
     def _split_data(self, split_rate: float) -> None:
-        """
-        Add 'group' column
-        :param split_rate: Split rate of control/treatment
-        :return: None
+        """ Add 'group' column
+
+        Args:
+            split_rate: Split rate of control/treatment
+        Returns:
+            None
         """
         split_rate: float = self.params.splitter_params.split_rate if split_rate is None else split_rate
         self.dataset = self.config['splitter'].fit(self.dataset,
@@ -68,8 +70,7 @@ class Splitter:
         return Z
 
     def __clustering(self) -> None:
-        """
-        Clustering for dataset
+        """ Clustering for dataset
         """
         X = self.dataset.copy()
         kmeans = KMeans(n_clusters=self.config['n_clusters'])
@@ -77,10 +78,13 @@ class Splitter:
         self.dataset.loc[self.config['cluster_col']] = kmeans.predict(X)
 
     def __kl_divergence(self, n_bins: int = 50) -> Tuple[float, float]:
-        """
-        Kullback-Leibler divergence for two arrays of cluster ids for A/A test
-        :param n_bins: Number of clusters
-        :return: Kullback-Leibler divergence a to b and b to a
+        """ Kullback-Leibler divergence for two arrays of cluster ids for A/A test
+
+        Args:
+            n_bins: Number of clusters
+
+        Returns:
+            Kullback-Leibler divergence a to b and b to a
         """
         a = self.dataset.loc[self.dataset[self.config['group_col'] == 'A'], self.config['cluster_col']].tolist()
         b = self.dataset.loc[self.dataset[self.config['group_col'] == 'B'], self.config['cluster_col']].tolist()
@@ -95,11 +99,14 @@ class Splitter:
         return (ent_ab, ent_ba)
 
     def __model_classify(self, X: pd.DataFrame = None, target: np.array = None) -> float:
-        """
-        Classification model for A/A test
-        :param X: Dataset to classify
-        :param target: Target for model
-        :return: ROC-AUC score for model
+        """ Classification model for A/A test
+
+        Args:
+            X: Dataset to classify
+            target: Target for model
+
+        Returns:
+            ROC-AUC score for model
         """
         X = self.dataset[self.config['clustering_cols']]
         target = self.config['target']
@@ -111,10 +118,13 @@ class Splitter:
         return roc_auc
 
     def __alpha_simulation(self, n_iter: int = 10000) -> float:
-        """
-        Perform A/A test
-        :param n_iter: Number of iterations
-        :return: Actual alpha; Share of iterations when control and treatment groups are equal
+        """ Perform A/A test
+
+        Args:
+            n_iter: Number of iterations
+
+        Returns:
+            Actual alpha; Share of iterations when control and treatment groups are equal
         """
         result: int = 0
         for it in range(n_iter):
@@ -155,23 +165,29 @@ class Splitter:
             return roc_auc
 
     def fit(self) -> None:
-        """
-        Split DataFrame and add group column based on splitting
-        :param X: Pandas DataFrame to split
-        :param split_rate: Split rate of control to treatment
-        :return: DataFrame with additional 'group' column
+        """ Split DataFrame and add group column based on splitting
+
+        Args:
+            X: Pandas DataFrame to split
+            split_rate: Split rate of control to treatment
+
+        Returns:
+            DataFrame with additional 'group' column
         """
         return self.splitter(self.config['split_rate'])
 
     def create_level(self, X: pd.DataFrame, id_column: str = '', salt: Union[str, int] = '',
                      n_buckets: int = 100) -> pd.DataFrame:
-        """
-        Create new levels in split all users into buckets
-        :param X: Pandas DataFrame
-        :param id_column: User id column name
-        :param salt: Salt string for the experiment
-        :param n_buckets: Number of buckets for level
-        :return: Pandas DataFrame extended by column 'bucket'
+        """ Create new levels in split all users into buckets
+
+        Args:
+            X: Pandas DataFrame
+            id_column: User id column name
+            salt: Salt string for the experiment
+            n_buckets: Number of buckets for level
+
+        Returns:
+            Pandas DataFrame extended by column 'bucket'
         """
         ids: np.array = X[self.config['id_col']].to_numpy()
         salt: str = salt if type(salt) is str else str(int)
