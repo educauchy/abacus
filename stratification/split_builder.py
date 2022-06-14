@@ -17,6 +17,12 @@ class StratificationSplitBuilder:
     def __init__(self, 
                  guests_data: pd.DataFrame, 
                  params: SplitBuilderParams):
+        """Builds stratification split for DataFrame
+
+        Args:
+            guests_data: dataframe with data building split
+            params: params for stratification and spilt
+        """
         self.guests_data = guests_data.reset_index(drop=True)
         self.params = params
 
@@ -34,10 +40,6 @@ class StratificationSplitBuilder:
                 the new column will be the same as the original.
 
         second feature (_freq): frequency with noise of the encoded feature
-
-        Args:
-            df (pd.DataFrame): DataFrame with stratification data
-            params (SplitBuilderParams): stratification parameters
 
         Return:
             pd.DataFrame: DataFrame with extra columns
@@ -65,6 +67,11 @@ class StratificationSplitBuilder:
 
 
     def assign_strata(self) -> pd.DataFrame:
+        """Assigns strata for rows
+
+        Returns:
+            DataFrame with strata columns
+        """
         self._prepare_cat_data()
         log.info("Calculate stratas for guest table")
         strata = binnarize(self.guests_data, self.params)
@@ -159,6 +166,14 @@ class StratificationSplitBuilder:
 
 
     def build_split(self, guests_data_with_strata: pd.DataFrame) -> pd.DataFrame:
+        """_summary_
+
+        Args:
+            guests_data_with_strata: DataFrame with strata column
+
+        Returns:
+            DataFrame with split
+        """
         max_attempts = 50  # max times to find split
         for _ in range(max_attempts):
             is_all_sizes_none = all(x is None for x in self.params.map_group_names_to_sizes.values())

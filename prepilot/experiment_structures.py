@@ -3,6 +3,8 @@ from pydantic.dataclasses import dataclass, Field
 
 @dataclass
 class BaseSplitElement():
+    """General dataclass of experiment
+    """
     group_sizes: tuple
     split_number: int
     control_group_size: int = Field(init=False)
@@ -13,8 +15,12 @@ class BaseSplitElement():
 
 @dataclass
 class PrepilotAlphaExperiment(BaseSplitElement):
+    """Dataclass for I type error calculactions
+    """
     metric_name: str = Field(init=False)
 
 @dataclass
 class PrepilotBetaExperiment(PrepilotAlphaExperiment):
+    """Dataclass for II type error calculactions
+    """
     inject: float = Field(init=False)

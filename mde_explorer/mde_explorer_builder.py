@@ -7,8 +7,8 @@ from auto_ab.params import ABTestParams
 
 _DEFAULT_SIZE = 1
 
-class MdeExplorertBuilder():
-    """Calculates I and II type errors for different group sizes and injects
+class MdeExplorerBuilder():
+    """Finds the nearest and the smallest group size.
     """
 
     def __init__(self,
@@ -18,9 +18,10 @@ class MdeExplorertBuilder():
                  stratification_params: SplitBuilderParams):
         """
         Args:
-            guests: dataframe that collected by PrepilotGuestsCollector
-            experiment_params: prameters for prepilot experiments
-
+            guests: DataFrame that shold be split for control and test groups.
+            abtest_params: params for A/B test that will be calculated in split process.
+            experiment_params: params for MDE searching.
+            stratification_params: params for stratification and splitting data.
         """
         self.guests = guests
         self.abtest_params = abtest_params
@@ -39,7 +40,15 @@ class MdeExplorertBuilder():
             max_beta_score=self.experiment_params.max_beta_score,
         )
 
-    def _calc_beta(self, group_size):
+    def _calc_beta(self, group_size:int) -> float:
+        """Calculations of II type error
+
+        Args:
+            group_size: size of group that will be pick out to test and control groups.
+
+        Returns:
+            II type error for group_size.
+        """
         self._prepilot_params.min_group_size = group_size
         self._prepilot_params.max_group_size = group_size
         prepilot = PrepilotExperimentBuilder(self.guests, 
@@ -50,7 +59,12 @@ class MdeExplorertBuilder():
 
         return beta.values[0][0]
     
-    def collect(self):
+    def collect(self) -> pd.DataFrame:
+        """Finds group_size that fit for MDE.
+
+        Returns:
+            DataFrame with 3 latest calculated group sizes.
+        """
         max_diff_beta = 1.0
         group_size = len(self.guests)//2
         min_size = len(self.guests)*self.experiment_params.min_group_fraction//2

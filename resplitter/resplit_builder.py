@@ -6,11 +6,22 @@ class ResplitBuilder():
     def __init__(self,
                  df: pd.DataFrame,
                  resplit_params: ResplitParams):
+        """_summary_
+
+        Args:
+            df: DataFrame for rebuild split
+            resplit_params: params for resplit
+        """
         self.df = df
         self.params = resplit_params
 
     
-    def collect(self):
+    def collect(self) -> pd.DataFrame:
+        """Method recalculate fractions of each strata in dataframe
+
+        Returns:
+            DataFrame witt recalculated strata fractions
+        """
         df_resplit = (self.df[self.df[self.params.group_col]==self.params.test_group_value]
                     .reset_index(drop=True)
         )

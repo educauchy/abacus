@@ -18,15 +18,15 @@ class PrepilotSplitBuilder():
                  group_sizes: List[int],
                  stratification_params: SplitBuilderParams,
                  iterations_number: int = 10):
-        """There is class for calculation columns with injetcs and target/control splits
+        """Builds splits for experiments
 
         Args:
             guests: dataframe with data for calculations injects and splits
             metrics_names: list of metrics for which will be calculate injects columns
+            injects: list of injects
             group_sizes: list of group sizes for split building
             stratification_params: stratification parameters
             iterations_number: number of columns that will be build for each group size
-
         """
         self.guests = guests
         self.metrics_names = metrics_names
@@ -34,19 +34,17 @@ class PrepilotSplitBuilder():
         self.iterations_number = iterations_number
         self.group_sizes = group_sizes
         self.stratification_params = copy.deepcopy(stratification_params)
-        self.split_grid = self.build_splits_grid()
+        self.split_grid = self._build_splits_grid()
         self.split_builder = StratificationSplitBuilder(self.guests, self.stratification_params)
 
-
-    def build_splits_grid(self):
+    def _build_splits_grid(self):
         return list(BaseSplitElement(el[0], el[1])
                     for el in itertools.product(self.group_sizes, np.arange(1, self.iterations_number+1)))
 
-    def collect(self):
+    def collect(self) -> pd.DataFrame:
         """Builds dataframe with data for prepilot experiments
 
         Returns: pandas DataFrame with columns for splits and injected metrics
-
         """
         prepilot_df = self.multliple_split()
         return prepilot_df
@@ -90,7 +88,6 @@ class PrepilotSplitBuilder():
             split_number: number of split. Uses as suffix for new column
 
         Returns: pandas DataFrame with split
-
         """
         map_group_names_to_sizes={
             "control": control_group_size,
@@ -111,7 +108,6 @@ class PrepilotSplitBuilder():
         """Calculate multiple split with stratification
 
         Returns: pandas DataFrame with split columns
-
         """
         guests_data_with_strata = self.split_builder.assign_strata()
         experiment_guests = self.guests.loc[:, [self.stratification_params.customer_col]]

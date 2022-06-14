@@ -20,14 +20,16 @@ class PrepilotParams:
     Args:
         metrics_names: metrics which will be compare in experiments.
         injects: injects represent MDE values.
-        min_group_size: minimal value of groups sizes
-        max_group_size: maximal value of groups sizes
-        step: Spacing between min_group_size and max_group_size
-        iterations_number: count of splits for each element in group_sizes
-        max_beta_score: max level of II type error
-        min_beta_score: min level of II type error, that will be calculated
-        for greater group size, if it has been found on earlier
-        and data haven't any changes turn to True otherwise False
+        min_group_size: minimal value of groups sizes.
+        max_group_size: maximal value of groups sizes.
+        step: Spacing between min_group_size and max_group_size.
+        variance_reduction: ABTest methods for variance reduction.
+        use_buckets: use bucketize method.
+        transformations: pipeline of experiment. Will be calulted in __post_init__.
+        stat_test: statistical test type.
+        iterations_number: count of splits for each element in group_sizes.
+        max_beta_score: max level of II type error.
+        min_beta_score: min level of II type error.
     """
     metrics_names: List[str]
     injects: List[float]
@@ -49,6 +51,12 @@ class PrepilotParams:
             transformations = [self.variance_reduction]
         transformations = list(filter(None, transformations))
         self.transformations = Pipeline(transformations)
+
+    @validator("variance_reduction", always=True)
+    @classmethod
+    def alternative_validator(cls, variance_reduction):
+        assert variance_reduction in [ABTest.cuped, ABTest.cupac, None]
+        return variance_reduction
 
     @validator("stat_test", always=True)
     @classmethod

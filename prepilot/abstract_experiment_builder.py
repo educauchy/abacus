@@ -18,6 +18,7 @@ class AbstractExperimentBuilder:
         """
         Args:
             guests: pandas dataframe that collected by PrepilotGuestsCollector
+            abtest_params: A/B tests params. Using for experiments calculations.
             experiment_params: parameters for experiments
         """
         self.guests = guests

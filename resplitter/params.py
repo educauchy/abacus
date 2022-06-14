@@ -13,7 +13,13 @@ class ValidationConfig:
 
 @dataclass(config=ValidationConfig)
 class ResplitParams:
-    path: str = '../notebooks/ab_data.csv'
+    """Resplit params class
+
+    Args:
+        strata_col: name of column with strata
+        group_col: name of column with groups split
+        test_group_value: value which identify control group in split
+    """
     strata_col: str = 'strata'
     group_col: str = 'group_col'
     test_group_value: Union[str,int] = 'B'

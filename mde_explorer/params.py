@@ -15,7 +15,16 @@ class MdeExplorerParams:
     """Prepilot experiment parameters class.
 
     Args:
-
+        inject: inject(minimum detectable effect) that will be applied for metric_name.
+        metric_name: metric name which will be affected in experemint.
+        eps: the minimum distance between calculated value and max_beta_score.
+        min_group_fraction: minimum possible DataFrame fraction in group.
+        variance_reduction: ABTest methods for variance reduction.
+        use_buckets: use bucketize method.
+        transformations: pipeline of experiment. Will be calulted in __post_init__.
+        stat_test: statistical test type.
+        iterations_number: number of group splits per group size.
+        max_beta_score: desired II type error level.
     """
     inject: float
     metric_name: str
@@ -36,6 +45,13 @@ class MdeExplorerParams:
 
         transformations = list(filter(None, transformations))
         self.transformations = Pipeline(transformations)
+
+
+    @validator("variance_reduction", always=True)
+    @classmethod
+    def alternative_validator(cls, variance_reduction):
+        assert variance_reduction in [ABTest.cuped, ABTest.cupac, None]
+        return variance_reduction
 
     @validator("stat_test", always=True)
     @classmethod
