@@ -9,8 +9,11 @@ class VarianceReduction:
     def __init__(self):
         pass
 
-    def _target_encoding(self, X: pd.DataFrame, encoding_colmns:List[str], target_column:str):
-        for col in X[encoding_colmns].select_dtypes(include='O').columns:
+    def _target_encoding(self, X: pd.DataFrame, encoding_columns:List[str], target_column:str):
+        """Encodes target column
+
+        """
+        for col in X[encoding_columns].select_dtypes(include='O').columns:
             te=TargetEncoder()
             X[col]=te.fit_transform(X[col],X[target_column])
         return X

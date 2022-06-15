@@ -62,7 +62,15 @@ class Splitter:
                                                    self.params.data_params.denominator,
                                                    split_rate)
 
-    def __default_splitter(self, split_rate: float = 0.5):
+    def __default_splitter(self, split_rate: float = 0.5) -> pd.DataFrame:
+        """Performs split into A and B using default splitter
+
+        Args:
+            split_rate: Share of control group
+
+        Returns:
+            Initial dataframe with additional 'group_col'
+        """
         A_data, B_data = train_test_split(self.dataset, train_size=split_rate, random_state=0)
         A_data.loc[:, self.config['group_col']] = 'A'
         B_data.loc[:, self.config['group_col']] = 'B'
@@ -151,6 +159,8 @@ class Splitter:
         return result
 
     def aa_test(self):
+        """Performs A/A test
+        """
         if self.config['to_cluster']:
             self.__clustering()
 
@@ -175,35 +185,6 @@ class Splitter:
             DataFrame with additional 'group' column
         """
         return self.splitter(self.config['split_rate'])
-
-    def create_level(self, X: pd.DataFrame, id_column: str = '', salt: Union[str, int] = '',
-                     n_buckets: int = 100) -> pd.DataFrame:
-        """ Create new levels in split all users into buckets
-
-        Args:
-            X: Pandas DataFrame
-            id_column: User id column name
-            salt: Salt string for the experiment
-            n_buckets: Number of buckets for level
-
-        Returns:
-            Pandas DataFrame extended by column 'bucket'
-        """
-        ids: np.array = X[self.config['id_col']].to_numpy()
-        salt: str = salt if type(salt) is str else str(int)
-        salt: bytes = bytes(salt, 'utf-8')
-        hasher = hashlib.blake2b(salt=salt)
-
-        bucket_ids: np.array = np.array([])
-        for id in ids:
-            hasher.update( bytes(str(id), 'utf-8') )
-            bucket_id = int(hasher.hexdigest(), 16) % n_buckets
-            bucket_ids = np.append(bucket_ids, bucket_id)
-
-        X.loc[:, 'bucket_id'] = bucket_ids
-        X = X.astype({'bucket_id': 'int32'})
-        return X
-
 
 if __name__ == '__main__':
     # Test hash function

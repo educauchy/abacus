@@ -43,6 +43,15 @@ class ABTest:
                f"alternative='{self.params.hypothesis_params.alternative}')"
 
     def __check_columns(self, df: pd.DataFrame, method: str) -> None:
+        """Check presence of columns in dataframe
+
+        Args:
+            df: DataFrame to check
+            method: Stage of A/B process which you'd like to test
+
+        Returns:
+            None
+        """
         cols: List[str] = []
         if method == 'init':
             cols = ['id_col', 'group_col']
@@ -79,7 +88,16 @@ class ABTest:
         if not is_valid_col:
             raise Exception('One or more columns are not presented in dataframe')
 
-    def __get_group(self, group_label: str = 'A', df: Optional[pd.DataFrame] = None):
+    def __get_group(self, group_label: str = 'A', df: Optional[pd.DataFrame] = None) -> np.ndarray:
+        """Gets target metric column based on desired group label
+
+        Args:
+            group_label: Group label, e.g. 'A', 'B'
+            df: DataFrame to query from
+
+        Returns:
+            Target column for a desired group
+        """
         X = df if df is not None else self.__dataset
         group = np.array([])
         if self.params.hypothesis_params.metric_type == 'solid':
@@ -91,7 +109,22 @@ class ABTest:
         return group
         
 
-    def _manual_ttest(self, A_mean: float, A_var: float, A_size: int, B_mean: float, B_var: float, B_size: int) -> int:
+    def _manual_ttest(self, A_mean: float, A_var: float, A_size: int,
+                      B_mean: float, B_var: float, B_size: int) -> stat_test_typing:
+        """Performs Student's t-test based on aggregation metrics instead of datasets
+
+        Args:
+            A_mean: Mean of control group
+            A_var: Variance of control group
+            A_size: Size of control group
+            B_mean: Mean of treatment group
+            B_var: Variance of treatment group
+            B_size: Size of treatment group
+
+        Returns:
+            Dictionary with following properties: test statistic, p-value, test result
+            Test result: 1 - significant different, 0 - insignificant difference
+        """
         t_stat_empirical = (A_mean - B_mean) / (A_var / A_size + B_var / B_size) ** (1/2)
         df = A_size + B_size - 2
 
@@ -109,9 +142,14 @@ class ABTest:
             if t_stat_empirical > rcv:
                 test_result = 1
 
-        return test_result
+        result = {
+            'stat': None,
+            'p-value': None,
+            'result': test_result
+        }
+        return result
 
-    def _linearize(self):
+    def _linearize(self) -> None:
             X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'A']
             K = round(sum(X[self.params.data_params.numerator]) / sum(X[self.params.data_params.denominator]), 4)
 
@@ -162,6 +200,10 @@ class ABTest:
 
     def ratio_bootstrap(self, X: pd.DataFrame = None, Y: pd.DataFrame = None) -> stat_test_typing:
         """Performs bootstrap for ratio-metric
+
+        Args:
+            X: Control group dataframe
+            Y: Treatment group dataframe
 
         Returns:
             Dictionary with following properties: test statistic, p-value, test result
@@ -601,8 +643,17 @@ class ABTest:
         return ABTest(result_df, params_new)
 
     def __bucketize(self, X: np.ndarray) -> np.ndarray:
+        """Split array into buckets
+
+        Args:
+            X: Array to split
+
+        Returns:
+            Splitted array
+        """
         np.random.shuffle(X)
-        X_new = np.array([ self.params.hypothesis_params.metric(x) for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
+        X_new = np.array([ self.params.hypothesis_params.metric(x)
+                           for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
         return X_new
 
     def bucketing(self):
