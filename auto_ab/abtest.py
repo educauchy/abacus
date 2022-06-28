@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import sys
 import yaml
+import os
 from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t, chisquare
 from statsmodels.stats.proportion import proportions_ztest
 from typing import Dict, Union, Optional, Callable, Tuple, List
@@ -13,6 +14,8 @@ from auto_ab.variance_reduction import VarianceReduction
 from auto_ab.params import ABTestParams
 from resplitter.resplit_builder import ResplitBuilder
 from resplitter.params import ResplitParams
+import multiprocessing
+from multiprocessing import Process, Pool, current_process
 
 sys.path.append('..')
 from auto_ab.params import *
@@ -108,7 +111,6 @@ class ABTest:
                           self.params.data_params.target_flg].to_numpy()
         return group
         
-
     def _manual_ttest(self, A_mean: float, A_var: float, A_size: int,
                       B_mean: float, B_var: float, B_size: int) -> stat_test_typing:
         """Performs Student's t-test based on aggregation metrics instead of datasets
@@ -130,7 +132,8 @@ class ABTest:
 
         test_result: int = 0
         if self.params.hypothesis_params.alternative == 'two-sided':
-            lcv, rcv = t.ppf(self.params.hypothesis_params.alpha / 2, df), t.ppf(1.0 - self.params.hypothesis_params.alpha / 2, df)
+            lcv, rcv = t.ppf(self.params.hypothesis_params.alpha / 2, df), \
+                       t.ppf(1.0 - self.params.hypothesis_params.alpha / 2, df)
             if not (lcv < t_stat_empirical < rcv):
                 test_result = 1
         elif self.params.hypothesis_params.alternative == 'left':
@@ -221,8 +224,11 @@ class ABTest:
         boot_b_metric = []
 
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
-            a_boot = X[X[self.params.data_params.id_col].isin(X[self.params.data_params.id_col].sample(X[self.params.data_params.id_col].nunique(), replace=True))]
-            b_boot = Y[Y[self.params.data_params.id_col].isin(Y[self.params.data_params.id_col].sample(Y[self.params.data_params.id_col].nunique(), replace=True))]
+            a_ids = X[self.params.data_params.id_col].sample(X[self.params.data_params.id_col].nunique(), replace=True)
+            b_ids = Y[self.params.data_params.id_col].sample(Y[self.params.data_params.id_col].nunique(), replace=True)
+
+            a_boot = X[X[self.params.data_params.id_col].isin(a_ids)]
+            b_boot = Y[Y[self.params.data_params.id_col].isin(b_ids)]
             a_boot_metric = sum(a_boot[self.params.data_params.numerator]) / sum(a_boot[self.params.data_params.denominator])
             b_boot_metric = sum(b_boot[self.params.data_params.numerator]) / sum(b_boot[self.params.data_params.denominator])
             boot_a_metric.append(a_boot_metric)
@@ -256,7 +262,7 @@ class ABTest:
         }
         return result
 
-    def ratio_taylor(self) -> stat_test_typing:
+    def taylor_method(self) -> stat_test_typing:
         """ Calculate expectation and variance of ratio for each group and then use t-test for hypothesis testing
         Source: http://www.stat.cmu.edu/~hseltman/files/ratio.pdf
 
@@ -269,14 +275,8 @@ class ABTest:
 
         A_mean, A_var = self._taylor_params(X)
         B_mean, B_var = self._taylor_params(Y)
-        test_result: int = self._manual_ttest(A_mean, A_var, X.shape[0], B_mean, B_var, Y.shape[0])
 
-        result = {
-            'stat': None,
-            'p-value': None,
-            'result': test_result
-        }
-        return result
+        return self._manual_ttest(A_mean, A_var, X.shape[0], B_mean, B_var, Y.shape[0])
 
     def delta_method(self) -> stat_test_typing:
         """ Delta method with bias correction for ratios
@@ -291,14 +291,8 @@ class ABTest:
 
         A_mean, A_var = self._delta_params(X)
         B_mean, B_var = self._delta_params(Y)
-        test_result: int = self._manual_ttest(A_mean, A_var, X.shape[0], B_mean, B_var, Y.shape[0])
 
-        result = {
-            'stat': None,
-            'p-value': None,
-            'result': test_result
-        }
-        return result
+        return self._manual_ttest(A_mean, A_var, X.shape[0], B_mean, B_var, Y.shape[0])
 
     def linearization(self) -> None:
         """Creates linearized continuous metric based on ratio-metric
@@ -515,12 +509,35 @@ class ABTest:
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
 
-        metric_diffs: List[float] = []
-        for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
-            x_boot = np.random.choice(X, size=X.shape[0], replace=True)
-            y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
-            metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
-        pd_metric_diffs = pd.DataFrame(metric_diffs)
+        if os.cpu_count() - 2 >= 2:
+            x_boot = []
+            y_boot = []
+
+            def boot_samples(data, group) -> None:
+                print("{0} has pid: {1} with parent pid: {2}".format(current_process().name, os.getpid(), os.getppid()))
+                if group == 'A':
+                    x_boot.append(np.mean(data))
+                elif group == 'B':
+                    y_boot.append(np.mean(data))
+
+            multiprocessing.set_start_method('spawn')
+
+            p1 = Process(target=boot_samples, args=(X, 'A'))
+            p2 = Process(target=boot_samples, args=(Y, 'B'))
+            p1.start()
+            p2.start()
+            p1.join()
+            p2.join()
+
+            metric_diffs = np.array(x_boot) - np.array(y_boot)
+            pd_metric_diffs = pd.DataFrame(metric_diffs)
+        else:
+            metric_diffs: List[float] = []
+            for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
+                x_boot = np.random.choice(X, size=X.shape[0], replace=True)
+                y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
+                metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
+            pd_metric_diffs = pd.DataFrame(metric_diffs)
 
         left_quant = self.params.hypothesis_params.alpha / 2
         right_quant = 1 - self.params.hypothesis_params.alpha / 2
@@ -712,3 +729,24 @@ if __name__ == '__main__':
     ab_obj = ABTest(df, ab_params)
     # ab_obj = ab_obj.cuped().bucketing()
     # print(ab_obj.params.data_params)
+    ab_obj.test_hypothesis_boot_est()
+
+
+    # a = list(np.random.random(10_000))
+    # b = list(np.random.random(10_000))
+    #
+    # res = []
+    # def func(data) -> None:
+    #     print("{0} has pid: {1} with parent pid: {2}".format(current_process().name, os.getpid(), os.getppid()))
+    #     res.append(np.mean(data))
+    #
+    # multiprocessing.set_start_method('spawn')
+    #
+    # p1 = Process(target=func, args=(a))
+    # p2 = Process(target=func, args=(b))
+    # p1.start()
+    # p2.start()
+    # p1.join()
+    # p2.join()
+    #
+    # print(res)
