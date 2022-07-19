@@ -145,8 +145,8 @@ class Simulation:
                     elif strategy == 'delta_method':
                         test_result: int = self.delta_method(control, treatment)
                         imitation_log[split_rate][inc] += test_result
-                    elif strategy == 'ratio_taylor':
-                        test_result: int = self.ratio_taylor(control, treatment)
+                    elif strategy == 'taylor_method':
+                        test_result: int = self.taylor_method(control, treatment)
                         imitation_log[split_rate][inc] += test_result
                     elif strategy == 'boot_hypothesis':
                         pvalue: float = self.test_boot_hypothesis(control, treatment, use_correction=use_correction)

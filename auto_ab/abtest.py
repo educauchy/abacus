@@ -509,35 +509,42 @@ class ABTest:
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
 
-        if os.cpu_count() - 2 >= 2:
-            x_boot = []
-            y_boot = []
+        # if os.cpu_count() - 2 >= 2:
+        #     x_boot = []
+        #     y_boot = []
+        #
+        #     def boot_samples(data, group) -> None:
+        #         print("{0} has pid: {1} with parent pid: {2}".format(current_process().name, os.getpid(), os.getppid()))
+        #         if group == 'A':
+        #             x_boot.append(np.mean(data))
+        #         elif group == 'B':
+        #             y_boot.append(np.mean(data))
+        #
+        #     multiprocessing.set_start_method('spawn')
+        #
+        #     p1 = Process(target=boot_samples, args=(X, 'A'))
+        #     p2 = Process(target=boot_samples, args=(Y, 'B'))
+        #     p1.start()
+        #     p2.start()
+        #     p1.join()
+        #     p2.join()
+        #
+        #     metric_diffs = np.array(x_boot) - np.array(y_boot)
+        #     pd_metric_diffs = pd.DataFrame(metric_diffs)
+        # else:
+        #     metric_diffs: List[float] = []
+        #     for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
+        #         x_boot = np.random.choice(X, size=X.shape[0], replace=True)
+        #         y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
+        #         metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
+        #     pd_metric_diffs = pd.DataFrame(metric_diffs)
 
-            def boot_samples(data, group) -> None:
-                print("{0} has pid: {1} with parent pid: {2}".format(current_process().name, os.getpid(), os.getppid()))
-                if group == 'A':
-                    x_boot.append(np.mean(data))
-                elif group == 'B':
-                    y_boot.append(np.mean(data))
-
-            multiprocessing.set_start_method('spawn')
-
-            p1 = Process(target=boot_samples, args=(X, 'A'))
-            p2 = Process(target=boot_samples, args=(Y, 'B'))
-            p1.start()
-            p2.start()
-            p1.join()
-            p2.join()
-
-            metric_diffs = np.array(x_boot) - np.array(y_boot)
-            pd_metric_diffs = pd.DataFrame(metric_diffs)
-        else:
-            metric_diffs: List[float] = []
-            for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
-                x_boot = np.random.choice(X, size=X.shape[0], replace=True)
-                y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
-                metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
-            pd_metric_diffs = pd.DataFrame(metric_diffs)
+        metric_diffs: List[float] = []
+        for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
+            x_boot = np.random.choice(X, size=X.shape[0], replace=True)
+            y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
+            metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
+        pd_metric_diffs = pd.DataFrame(metric_diffs)
 
         left_quant = self.params.hypothesis_params.alpha / 2
         right_quant = 1 - self.params.hypothesis_params.alpha / 2

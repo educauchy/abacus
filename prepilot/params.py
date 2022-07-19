@@ -67,7 +67,7 @@ class PrepilotParams:
                              ABTest.test_hypothesis_mannwhitney,
                              ABTest.test_hypothesis_ttest,
                              ABTest.delta_method,
-                             ABTest.ratio_taylor,
+                             ABTest.taylor_method,
                              ABTest.ratio_bootstrap
                             ]
         return stat_test
