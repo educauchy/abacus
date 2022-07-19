@@ -21,7 +21,7 @@ POSSIBLE_TESTS = [ABTest.test_hypothesis_boot_confint,
                 ABTest.test_hypothesis_mannwhitney,
                 ABTest.test_hypothesis_ttest,
                 ABTest.delta_method,
-                ABTest.ratio_taylor,
+                ABTest.taylor_method,
                 ABTest.ratio_bootstrap
             ]
 
