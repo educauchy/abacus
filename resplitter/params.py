@@ -1,8 +1,7 @@
 from __future__ import annotations
-from typing import List, Tuple, Any, Callable, Union
+from typing import Union
 from pydantic.dataclasses import dataclass
-from pydantic import validator, Field
-import numpy as np
+
 
 class ValidationConfig:
     validate_assignment = True
@@ -11,15 +10,21 @@ class ValidationConfig:
     #    'value_error.any_str.max_length': 'max_length:{limit_value}',
     #}
 
+@dataclass
+class GroupNames():
+    test_group_name: Union[str, int] = 'test'
+    control_group_name: Union[str, int] = 'control'
+
+
 @dataclass(config=ValidationConfig)
 class ResplitParams:
     """Resplit params class
 
     Args:
+        group_names: group names
         strata_col: name of column with strata
         group_col: name of column with groups split
-        test_group_value: value which identify control group in split
     """
+    group_names: GroupNames
     strata_col: str = 'strata'
     group_col: str = 'group_col'
-    test_group_value: Union[str,int] = 'B'

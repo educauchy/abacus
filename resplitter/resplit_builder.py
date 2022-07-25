@@ -14,33 +14,58 @@ class ResplitBuilder():
         """
         self.df = df
         self.params = resplit_params
+        self._len_df = len(df)
 
-    
+
     def collect(self) -> pd.DataFrame:
         """Method recalculate fractions of each strata in dataframe
 
         Returns:
             DataFrame witt recalculated strata fractions
         """
-        df_resplit = (self.df[self.df[self.params.group_col]==self.params.test_group_value]
-                    .reset_index(drop=True)
-        )
-        df_strata_count = (df_resplit.groupby(self.params.strata_col)
-                    .agg('count')[self.params.group_col].reset_index()
-        )
+        df_restrata = pd.DataFrame()
 
-        min_count = df_strata_count.min()[self.params.group_col]
-        min_strata = (df_strata_count[df_strata_count[self.params.group_col]==min_count][self.params.strata_col]
-                    .values[0]
+        strata_all_count = (self.df.value_counts(self.params.strata_col)
+                            .reset_index(name='all_count')
         )
+        strata_test_counts = (self.df
+                            .value_counts([self.params.strata_col, self.params.group_col])
+                            .reset_index(name = 'count')
+        )   
+        strata_test_counts = (strata_test_counts
+                            .merge(strata_all_count,
+                                    on = self.params.strata_col, 
+                                    how = 'inner')
+        )
+        strata_test_counts['frequency'] = strata_test_counts['count'] / strata_test_counts['all_count']
 
-        df_restrata = df_resplit[df_resplit[self.params.strata_col]==min_strata]
+        min_group_freq = (strata_test_counts
+                    .groupby(self.params.strata_col)
+                    .min()['frequency'].reset_index(name='min_freq')
+        )
+        strata_test_counts = strata_test_counts.merge(min_group_freq, 
+                                                        on = self.params.strata_col
+                                                    )
+        strata_test_counts['disired_count'] = round(strata_test_counts['all_count'] 
+                                                    * strata_test_counts['min_freq'], 0
+                                                )
+        strata_test_counts['disired_count'] = strata_test_counts['disired_count'].astype(int)
 
-        for strata in df_strata_count[df_strata_count[self.params.strata_col]!=min_strata][self.params.strata_col]:
-            df_strata = df_resplit[df_resplit[self.params.strata_col]==strata]
-            df_strata = df_strata.sample(n=min_count)
-            df_restrata = pd.concat([df_restrata, df_strata])
+        group_names = [self.params.group_names.test_group_name, self.params.group_names.control_group_name]
+
+        for group_name in group_names:  
+            for strata in self.df[self.params.strata_col].unique():
+                strata_group_count = (strata_test_counts[
+                                            (strata_test_counts[self.params.group_col] == group_name) &
+                                            (strata_test_counts[self.params.strata_col] == strata)
+                    ]['disired_count']
+                ).values[0]
+
+                strata_group_values = (self.df[
+                                        (self.df[self.params.group_col] == group_name) &
+                                        (self.df[self.params.strata_col] == strata)]
+                )
+                df_strata = strata_group_values.sample(n=strata_group_count)
+                df_restrata = pd.concat([df_restrata, df_strata])
         
-        return pd.concat([df_restrata,
-                        (self.df[self.df[self.params.group_col]!=self.params.test_group_value]
-                        .reset_index(drop=True))])
+        return df_restrata
