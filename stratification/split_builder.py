@@ -166,7 +166,7 @@ class StratificationSplitBuilder:
 
 
     def build_split(self, guests_data_with_strata: pd.DataFrame) -> pd.DataFrame:
-        """_summary_
+        """Builds strarified split
 
         Args:
             guests_data_with_strata: DataFrame with strata column
