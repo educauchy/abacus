@@ -185,7 +185,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                         # check if beta score higher then min_beta
                         if(res_inject_agg["beta"].values >= round(self.experiment_params.min_beta_score,
                                                            self._number_of_decimals)) and not found_min_inject_flg:
-                            max_found_inject_ind = self.experiment_params.injects.index(inject)
+                            max_found_inject_ind = len(self.experiment_params.injects) - self.experiment_params.injects.index(inject)
                             found_min_inject_flg = True
 
                         if(res_inject_agg["beta"].values >= round(self.experiment_params.max_beta_score,
