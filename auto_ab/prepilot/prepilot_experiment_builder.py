@@ -2,13 +2,13 @@ from typing import Union
 import itertools
 import numpy as np
 import pandas as pd
-from stratification.params import SplitBuilderParams
-from prepilot.experiment_structures import PrepilotAlphaExperiment, PrepilotBetaExperiment
-from prepilot.abstract_experiment_builder import AbstractExperimentBuilder
-from prepilot.prepilot_split_builder import PrepilotSplitBuilder
-from prepilot.params import PrepilotParams
-from auto_ab.abtest import ABTest
-from auto_ab.params import ABTestParams
+from auto_ab.stratification.params import SplitBuilderParams
+from auto_ab.prepilot.experiment_structures import PrepilotAlphaExperiment, PrepilotBetaExperiment
+from auto_ab.prepilot.abstract_experiment_builder import AbstractExperimentBuilder
+from auto_ab.prepilot.prepilot_split_builder import PrepilotSplitBuilder
+from auto_ab.prepilot.params import PrepilotParams
+from auto_ab.auto_ab.abtest import ABTest
+from auto_ab.auto_ab.params import ABTestParams
 
 
 class PrepilotExperimentBuilder(AbstractExperimentBuilder):

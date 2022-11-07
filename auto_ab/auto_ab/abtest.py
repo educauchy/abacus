@@ -9,16 +9,16 @@ from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t, chisquare
 from statsmodels.stats.proportion import proportions_ztest
 from typing import Dict, Union, Optional, Callable, Tuple, List
 from tqdm.auto import tqdm
-from auto_ab.graphics import Graphics
-from auto_ab.variance_reduction import VarianceReduction
-from auto_ab.params import ABTestParams
-from resplitter.resplit_builder import ResplitBuilder
-from resplitter.params import ResplitParams
+# from params import *
 import multiprocessing
 from multiprocessing import Process, Pool, current_process
 
+from auto_ab.auto_ab.graphics import Graphics
+from auto_ab.auto_ab.variance_reduction import VarianceReduction
+from auto_ab.auto_ab.params import ABTestParams
 sys.path.append('..')
-from auto_ab.params import *
+from auto_ab.resplitter.resplit_builder import ResplitBuilder
+from auto_ab.resplitter.params import ResplitParams
 
 
 metric_name_typing = Union[str, Callable[[np.array], Union[int, float]]]

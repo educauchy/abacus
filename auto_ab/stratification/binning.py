@@ -2,7 +2,7 @@ import logging
 import pandas as pd
 import hdbscan
 from sklearn.preprocessing import robust_scale
-from stratification.params import SplitBuilderParams
+from auto_ab.stratification.params import SplitBuilderParams
 
 log = logging.getLogger(__name__)
 

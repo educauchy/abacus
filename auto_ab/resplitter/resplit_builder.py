@@ -1,5 +1,5 @@
 import pandas as pd
-from resplitter.params import ResplitParams
+from auto_ab.resplitter.params import ResplitParams
 
 
 class ResplitBuilder():

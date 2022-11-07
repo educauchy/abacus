@@ -2,7 +2,7 @@ import logging
 import itertools
 import numpy as np
 import pandas as pd
-from auto_ab.params import ABTestParams
+from auto_ab.auto_ab.params import ABTestParams
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)

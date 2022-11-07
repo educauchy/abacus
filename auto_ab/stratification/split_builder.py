@@ -5,9 +5,9 @@ from typing import Dict, List
 from math import floor
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
-from stratification.stat_test import StatTest
-from stratification.binning import binnarize
-from stratification.params import SplitBuilderParams
+from auto_ab.stratification.stat_test import StatTest
+from auto_ab.stratification.binning import binnarize
+from auto_ab.stratification.params import SplitBuilderParams
 pd.options.mode.chained_assignment = None
 
 log = logging.getLogger(__name__)

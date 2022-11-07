@@ -3,9 +3,9 @@ import copy
 import itertools
 import numpy as np
 import pandas as pd
-from stratification.params import SplitBuilderParams
-from stratification.split_builder import StratificationSplitBuilder
-from prepilot.experiment_structures import BaseSplitElement
+from auto_ab.stratification.params import SplitBuilderParams
+from auto_ab.stratification.split_builder import StratificationSplitBuilder
+from auto_ab.prepilot.experiment_structures import BaseSplitElement
 
 
 class PrepilotSplitBuilder():
