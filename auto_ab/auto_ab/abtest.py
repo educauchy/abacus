@@ -409,7 +409,9 @@ class ABTest:
 
         count = np.array([sum(X) , sum(Y)])
         nobs  = np.array([len(X), len(Y)])
-        stat, pvalue = proportions_ztest(count, nobs, self.params.hypothesis_params.alpha)
+        print('Conversion A: {:.4f}'.format(sum(X)/len(X)))
+        print('Conversion B: {:.4f}'.format(sum(Y)/len(Y)))
+        stat, pvalue = proportions_ztest(count, nobs)
 
         test_result: int = 0
         if pvalue <= self.params.hypothesis_params.alpha:
