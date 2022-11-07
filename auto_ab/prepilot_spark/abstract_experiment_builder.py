@@ -3,7 +3,7 @@ import itertools
 import yaml
 import numpy as np
 import pandas as pd
-from analysis.params import PeriodStatTestParams
+from auto_ab.analysis.params import PeriodStatTestParams
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)

@@ -6,9 +6,9 @@ import pandas as pd
 import pyspark.sql.functions as F
 import pyspark.sql.types as T
 from pyspark.sql.functions import pandas_udf
-from stratification.params import SplitBuilderParams
-from stratification.split_builder import build_split, prepare_cat_data, assign_strata
-from prepilot_spark.experiment_structures import BaseSplitElement
+from auto_ab.stratification.params import SplitBuilderParams
+from auto_ab.stratification.split_builder import build_split, prepare_cat_data, assign_strata
+from auto_ab.prepilot_spark.experiment_structures import BaseSplitElement
 
 
 class PrepilotSplitBuilder():

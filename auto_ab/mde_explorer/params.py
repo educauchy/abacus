@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional, Callable, Union
 from pydantic import validator, root_validator
 from pydantic.dataclasses import dataclass
-from auto_ab.abtest import ABTest
+from auto_ab.auto_ab.abtest import ABTest
 from fastcore.transform import Pipeline
 
 

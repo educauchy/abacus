@@ -585,7 +585,8 @@ class ABTest:
         for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
             y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
-            metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
+            metric_diffs.append(self.params.hypothesis_params.metric(x_boot) -
+                                self.params.hypothesis_params.metric(y_boot) )
         pd_metric_diffs = pd.DataFrame(metric_diffs)
 
         left_quant = self.params.hypothesis_params.alpha / 2
