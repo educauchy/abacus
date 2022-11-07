@@ -5,7 +5,7 @@ on:
     tags:
       - '!refs/tags/*'
     branches:
-      - '*'
+      - 'main'
 env:
   DEVOPS_DIR: runner
 
