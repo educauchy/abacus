@@ -4,6 +4,7 @@ import random
 from typing import Dict, List
 from math import floor
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from auto_ab.stratification.stat_test import StatTest
 from auto_ab.stratification.binning import binnarize
@@ -44,24 +45,22 @@ class StratificationSplitBuilder:
         Return:
             pd.DataFrame: DataFrame with extra columns
         """
-        n_row = self.guests_data.shape[0]
-        n_top_cat = self.params.n_top_cat
-
         df = self.guests_data.copy()
-
+    
         for col in self.params.cat_cols:
-            top_cat = df.groupby(col).size().sort_values(ascending=False).index[:n_top_cat]
-            encoded_col = df[col].copy()
-            encoded_col[~encoded_col.isin(top_cat)] = sys.maxsize
-
-            counts = encoded_col.value_counts().to_dict()
-            # the addition of a random value is used to separate groups with the same frequency:
-            # {A: 83, B: 83} -> {A: 83.015, B: 83.036}
-            counts = {key: value + (random.random() / 10) for key, value in counts.items()}
-
-            df[f"{col}_encoded"] = encoded_col
-            df[f"{col}"] = df[f"{col}_encoded"].map(lambda x, counts=counts: counts[x] / n_row)
-            del df[f"{col}_encoded"]
+            counts = df[col].value_counts()
+            counts.iloc[:self.params.n_top_cat] = (
+                counts.iloc[:self.params.n_top_cat] 
+                + 0.1 * (np.random.uniform(low=0., 
+                                            high=1., 
+                                            size=len(counts.iloc[:self.params.n_top_cat])) 
+                        )
+            )
+            counts.iloc[self.params.n_top_cat:] = sys.maxsize
+            counts = counts.to_dict()
+            df[col] = (df[col]
+                      .map(lambda x, counts=counts: counts[x] / self.guests_data.shape[0])
+            )
         
         self.guests_data = df.reset_index(drop=True)
 
