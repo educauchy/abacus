@@ -5,9 +5,13 @@ from typing import Dict, List
 from math import floor
 import pandas as pd
 import numpy as np
+import hdbscan
+from sklearn.preprocessing import robust_scale
+from auto_ab.stratification.params import SplitBuilderParams
+from fastcore.transform import Pipeline
 from sklearn.model_selection import StratifiedKFold
 from auto_ab.stratification.stat_test import StatTest
-from auto_ab.stratification.binning import binnarize
+#from auto_ab.stratification.binning import binnarize
 from auto_ab.stratification.params import SplitBuilderParams
 pd.options.mode.chained_assignment = None
 
@@ -28,7 +32,7 @@ class StratificationSplitBuilder:
         self.params = params
 
 
-    def _prepare_cat_data(self) -> pd.DataFrame:
+    def _prepare_cat_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """This function converts given categorical features into features suitable for clustering and
         stratification. This functionality is achieved by adding two new features for each categorical
         feature:
@@ -45,8 +49,8 @@ class StratificationSplitBuilder:
         Return:
             pd.DataFrame: DataFrame with extra columns
         """
-        df = self.guests_data.copy()
-    
+        df_cat = df.copy()
+        #log.info("Prepare categorical cols")
         for col in self.params.cat_cols:
             counts = df[col].value_counts()
             counts.iloc[:self.params.n_top_cat] = (
@@ -58,11 +62,73 @@ class StratificationSplitBuilder:
             )
             counts.iloc[self.params.n_top_cat:] = sys.maxsize
             counts = counts.to_dict()
-            df[col] = (df[col]
-                      .map(lambda x, counts=counts: counts[x] / self.guests_data.shape[0])
+            df_cat[col] = (df_cat[col]
+                          .map(lambda x, counts=counts: counts[x] / self.guests_data.shape[0])
             )
         
-        self.guests_data = df.reset_index(drop=True)
+        #self.guests_data = df.reset_index(drop=True)
+        return df_cat
+
+    def binnarize(self, df: pd.DataFrame) -> pd.DataFrame:
+        log.info("Calculate stratas for guest table")
+        lst = []
+        for region in list(df[self.params.region_col].unique()):
+            dfr = df[df[self.params.region_col] == region]
+
+            # check size of selection by region to skip unreasonable split
+            if len(dfr) >= self.params.bin_min_size * self.params.n_bins_rto:
+                # construct rto bins
+                if len(dfr[self.params.split_metric_col].unique()) > self.params.n_bins_rto:
+                    labels = pd.qcut(
+                        dfr[self.params.split_metric_col], self.params.n_bins_rto, labels=False, duplicates="drop"
+                    ).astype(str)
+                else:
+                    labels = dfr[self.params.split_metric_col].astype(int).astype(str)
+
+                # construct extra columns bins
+                for label in list(labels.unique()):
+                    res = self.bin_with_clustering(dfr[labels == label], region, label, self.params)
+                    lst.append(res)
+            else:
+                res = (dfr[[self.params.region_col, self.params.split_metric_col]]
+                    .rename(columns={self.params.split_metric_col: f"{self.params.split_metric_col}_bin"})
+                )
+                res["cls"] = -1
+                res["label"] = "outlier"
+                res = res.astype(str)
+                lst.append(res)
+
+        stratas = pd.concat(lst, axis=0)
+        stratas_wo_outliers = stratas.query("cls != '-1'")
+        n_outliers = stratas.shape[0] - stratas_wo_outliers.shape[0]
+        if n_outliers > 0:
+            log.info(f"{n_outliers} outliers found")
+        
+        return df.loc[stratas["label"].index].assign(strata=stratas["label"])
+
+    @staticmethod
+    def bin_with_clustering(
+        df_region_labeled: pd.DataFrame, region: str, label: str, params: SplitBuilderParams
+        ) -> pd.DataFrame:
+
+        try:
+            X = df_region_labeled[params.cols].values  # pylint: disable=invalid-name
+            X_scaled = robust_scale(X)  # pylint: disable=invalid-name
+            clusterer = hdbscan.HDBSCAN(min_cluster_size=params.bin_min_size)
+            clusterer.fit(X_scaled)
+            inlabels = clusterer.labels_.astype(str)
+        except ValueError:
+            inlabels = ["0"]
+
+        res = pd.DataFrame(
+            {
+                params.region_col: region,
+                f"{params.split_metric_col}_bin": label,
+                "cls": inlabels
+            }, index=df_region_labeled.index
+        )
+        res = res.assign(label=lambda x: x[params.region_col].astype(str) + x[f"{params.split_metric_col}_bin"] + x.cls)
+        return res
 
 
     def assign_strata(self) -> pd.DataFrame:
@@ -71,10 +137,15 @@ class StratificationSplitBuilder:
         Returns:
             DataFrame with strata columns
         """
-        self._prepare_cat_data()
-        log.info("Calculate stratas for guest table")
-        strata = binnarize(self.guests_data, self.params)
-        stratified_data = self.guests_data.loc[strata.index].assign(strata=strata)
+        #self._prepare_cat_data()
+        transform = [self._prepare_cat_data,self.binnarize]
+        pipeline = Pipeline(transform)
+        stratified_data = pipeline(self.guests_data)
+        #return pipeline(self.df)
+        #cat_prepared_df = self._prepare_cat_data()
+        #log.info("Calculate stratas for guest table")
+        #strata = binnarize(cat_prepared_df, self.params)
+        #stratified_data = self.guests_data.loc[strata.index].assign(strata=strata)
         return stratified_data
 
     def _map_stratified_samples(self, guests:pd.DataFrame) -> Dict[str, List[int]]:
