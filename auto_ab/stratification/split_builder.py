@@ -1,6 +1,5 @@
 import sys
 import logging
-import random
 from typing import Dict, List
 from math import floor
 import pandas as pd
@@ -9,10 +8,12 @@ import hdbscan
 from sklearn.preprocessing import robust_scale
 from auto_ab.stratification.params import SplitBuilderParams
 from fastcore.transform import Pipeline
-from sklearn.model_selection import StratifiedKFold
 from auto_ab.stratification.stat_test import StatTest
 #from auto_ab.stratification.binning import binnarize
 from auto_ab.stratification.params import SplitBuilderParams
+from auto_ab.auto_ab.abtest import ABTest
+from auto_ab.auto_ab.params import ABTestParams
+from auto_ab.auto_ab.params import DataParams, SimulationParams, HypothesisParams, ResultParams, SplitterParams
 pd.options.mode.chained_assignment = None
 
 log = logging.getLogger(__name__)
@@ -148,72 +149,77 @@ class StratificationSplitBuilder:
         #stratified_data = self.guests_data.loc[strata.index].assign(strata=strata)
         return stratified_data
 
-    def _map_stratified_samples(self, guests:pd.DataFrame) -> Dict[str, List[int]]:
+
+    def _map_stratified_samples(self, guests:pd.DataFrame) -> pd.DataFrame:
         if all(x is None for x in self.params.map_group_names_to_sizes.values()):
             (self.params.map_group_names_to_sizes
                 .update((key,len(guests)//len(self.params.map_group_names_to_sizes)) 
                         for key in self.params.map_group_names_to_sizes
                         )
             )
-
-        reserved_guests = []
-        group_guests_map = dict()
+    
+        group_guests_map = pd.DataFrame(columns=[self.params.customer_col, "group_name"])#dict()
         for group_name, group_size in self.params.map_group_names_to_sizes.items():
-            available_guests = guests.loc[~guests[self.params.customer_col].isin(reserved_guests)].copy()
+            available_guests = (guests.loc[~guests[self.params.customer_col]
+                                .isin(group_guests_map[self.params.customer_col].values)]
+                                .copy()
+            )
             group_frac_to_take = min(group_size / len(available_guests), 1)
 
             group_guests = (
                 available_guests
                 .groupby("strata", group_keys=False)
                 .apply(lambda x, frac=group_frac_to_take: x.sample(frac=frac))[self.params.customer_col]
-                .tolist()
+                .to_frame().reset_index(drop=True)
             )
+            group_guests["group_name"] = group_name
+            group_guests_map = pd.concat([group_guests_map, group_guests])
 
-            group_guests_map[group_name] = group_guests
-            reserved_guests.extend(group_guests)
-
-        return group_guests_map
-
-
-    def _compare_groups(self, df: pd.DataFrame, split_dict: Dict) -> pd.DataFrame:
-        cols_validate = self.params.cols
-        cat_cols = self.params.cat_cols
-        customer_col = self.params.customer_col
-        for i, col in enumerate(cols_validate):
-            unique_num = len(df[col].unique())
-            if (unique_num < SplitBuilderParams.min_unique_values_in_col) and (col not in cat_cols):
-                log.warning(f"Unable to include '{col}' for test, the number of unique values is {unique_num}."
-                            "It can be encoded as category col.")
-                cols_validate.pop(i)
-        stats = StatTest(df, split_dict, customer_col, cols_validate, cat_cols, self.params.stat_test).compute()
-        return stats
-
-
-    def _check_splits(self, guests_data: pd.DataFrame, control_group: List[int],
-                    target_groups: List[List[int]]) -> int:
+        guests = guests.merge(group_guests_map, 
+                              on = self.params.customer_col,
+                              how = "left"
+        )
+        return guests
+    
+    def _check_groups(self, 
+                    df_with_groups:pd.DataFrame,
+                    control_name:str, 
+                    target_groups_names: List[str]):
+        tests_results = {}
         check_flag = 1
-        for i, target_group in enumerate(target_groups):
-            errors = self._compare_groups(
-                guests_data,
-                {SplitBuilderParams.control_group_name: control_group, "target": target_group},
-            )
 
-            if (errors < self.params.pvalue).any().any():
+        for group in target_groups_names:
+            #удалить после внесение изменений в парметры аб теста
+            map_dict = {control_name:"A",group:"B"}
+            guests_for_test = df_with_groups.copy()
+            guests_for_test["group_name"] = guests_for_test["group_name"].map(map_dict)
+            result_params = ResultParams()
+            splitter_params = SplitterParams()
+            simulation_params = SimulationParams()
+            ####
+
+            hypothesis_params = HypothesisParams(alpha=self.params.pvalue)
+            for column in self.params.cols + self.params.cat_cols :
+                data_params = DataParams(group_col="group_name",
+                                    id_col = self.params.customer_col,
+                                    target = column
+                )
+                ab_params = ABTestParams(data_params, simulation_params, hypothesis_params, result_params, splitter_params)
+                ab_test = ABTest(guests_for_test, ab_params)
+
+                if column in self.params.cols: 
+                    test_result = ab_test.test_hypothesis_ttest()
+                else:
+                    test_result = ab_test.test_hypothesis_ztest_prop()
+
+                tests_results[column] = test_result['p-value'].round(4)
+
+            result = pd.DataFrame(tests_results, index=["1"])
+            if(result < hypothesis_params.alpha).any().any():
                 check_flag = 0
-                log.error(f"Could not split statistically {i} target and control")
+                log.error(f"Could not split statistically {group} and control")
                 return check_flag
-
         return check_flag
-
-
-    def _add_group_name(self, guests_data: pd.DataFrame, group_guests_map: Dict[str, List[int]]) -> pd.DataFrame:
-        guests_data["group_name"] = None
-        for group_name, group_guests in group_guests_map.items():
-            guests_data.loc[
-                guests_data[self.params.customer_col].isin(group_guests), "group_name"
-            ] = group_name
-
-        return guests_data.dropna(subset=["group_name"])
 
 
     def build_split(self, guests_data_with_strata: pd.DataFrame) -> pd.DataFrame:
@@ -228,19 +234,14 @@ class StratificationSplitBuilder:
         max_attempts = 50  # max times to find split
         for _ in range(max_attempts):
             group_guests_map = self._map_stratified_samples(guests_data_with_strata)
-
-            control_group = group_guests_map[SplitBuilderParams.control_group_name]
-            target_groups = [
-                group_guests
-                for group_name, group_guests in group_guests_map.items()
-                if group_name != SplitBuilderParams.control_group_name
-            ]
-            check_flag = self._check_splits(guests_data_with_strata, control_group, target_groups)
+            target_groups = group_guests_map["group_name"].unique().tolist()
+            target_groups.remove(SplitBuilderParams.control_group_name)
+            check_flag = self._check_groups(group_guests_map, SplitBuilderParams.control_group_name, target_groups)
 
             if check_flag:
                 log.info("Success!")
 
-                return self._add_group_name(guests_data_with_strata, group_guests_map)
+                return group_guests_map
 
         log.error("Split failed!")
         return guests_data_with_strata
