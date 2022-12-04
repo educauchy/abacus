@@ -4,6 +4,7 @@ import random
 from typing import Dict, List
 from math import floor
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from auto_ab.stratification.stat_test import StatTest
 from auto_ab.stratification.binning import binnarize
@@ -44,24 +45,22 @@ class StratificationSplitBuilder:
         Return:
             pd.DataFrame: DataFrame with extra columns
         """
-        n_row = self.guests_data.shape[0]
-        n_top_cat = self.params.n_top_cat
-
         df = self.guests_data.copy()
-
+    
         for col in self.params.cat_cols:
-            top_cat = df.groupby(col).size().sort_values(ascending=False).index[:n_top_cat]
-            encoded_col = df[col].copy()
-            encoded_col[~encoded_col.isin(top_cat)] = sys.maxsize
-
-            counts = encoded_col.value_counts().to_dict()
-            # the addition of a random value is used to separate groups with the same frequency:
-            # {A: 83, B: 83} -> {A: 83.015, B: 83.036}
-            counts = {key: value + (random.random() / 10) for key, value in counts.items()}
-
-            df[f"{col}_encoded"] = encoded_col
-            df[f"{col}"] = df[f"{col}_encoded"].map(lambda x, counts=counts: counts[x] / n_row)
-            del df[f"{col}_encoded"]
+            counts = df[col].value_counts()
+            counts.iloc[:self.params.n_top_cat] = (
+                counts.iloc[:self.params.n_top_cat] 
+                + 0.1 * (np.random.uniform(low=0., 
+                                            high=1., 
+                                            size=len(counts.iloc[:self.params.n_top_cat])) 
+                        )
+            )
+            counts.iloc[self.params.n_top_cat:] = sys.maxsize
+            counts = counts.to_dict()
+            df[col] = (df[col]
+                      .map(lambda x, counts=counts: counts[x] / self.guests_data.shape[0])
+            )
         
         self.guests_data = df.reset_index(drop=True)
 
@@ -78,48 +77,29 @@ class StratificationSplitBuilder:
         stratified_data = self.guests_data.loc[strata.index].assign(strata=strata)
         return stratified_data
 
-
-    def _form_equal_group_splits(self, guests:pd.DataFrame) -> Dict[str, List[int]]:
-        total_size = guests.shape[0]
-        n_groups = len(self.params.map_group_names_to_sizes)
-        size_one_group = int(floor(total_size / n_groups))
-
-        if size_one_group == 0:
-            log.error("Size one group equals 0. Check size of guests_data")
-            raise ValueError("Impossible size of guests_data")
-
-        # sample target groups
-        group_guests_map = dict()
-        s_kfolds = StratifiedKFold(n_splits=n_groups, shuffle=True)
-        group_names = list(self.params.map_group_names_to_sizes.keys())
-        for i, (_, test_index) in enumerate(s_kfolds.split(guests, guests["strata"])):
-            group_guests_map[group_names[i]] = guests.loc[
-                guests.index.intersection(test_index), self.params.customer_col
-            ].tolist()
-
-        return group_guests_map
-
-
-    def _form_unequal_group_splits(self, guests:pd.DataFrame) -> Dict[str, List[int]]:
-        already_taken_guests = []
-        group_guests_map = dict()
-        for group_name, group_size in self.params.map_group_names_to_sizes.items():
-            new_df = guests.loc[~guests[self.params.customer_col].isin(already_taken_guests)].copy()
-            group_frac_to_take = min(group_size / len(new_df), 1)
-
-            group_guests = (
-                new_df
-                .groupby("strata", group_keys=False)
-                .apply(lambda x, frac=group_frac_to_take: x.sample(frac=frac))
-                [self.params.customer_col].tolist()
+    def _map_stratified_samples(self, guests:pd.DataFrame) -> Dict[str, List[int]]:
+        if all(x is None for x in self.params.map_group_names_to_sizes.values()):
+            (self.params.map_group_names_to_sizes
+                .update((key,len(guests)//len(self.params.map_group_names_to_sizes)) 
+                        for key in self.params.map_group_names_to_sizes
+                        )
             )
 
-            abs_percent_err = round(abs((len(group_guests) - group_size) / group_size) * 100, 2)
-            log.info(f"{group_name}: Desired size = {group_frac_to_take}, \
-            resulting size = {len(group_guests)}, diff = {abs_percent_err} %")
+        reserved_guests = []
+        group_guests_map = dict()
+        for group_name, group_size in self.params.map_group_names_to_sizes.items():
+            available_guests = guests.loc[~guests[self.params.customer_col].isin(reserved_guests)].copy()
+            group_frac_to_take = min(group_size / len(available_guests), 1)
+
+            group_guests = (
+                available_guests
+                .groupby("strata", group_keys=False)
+                .apply(lambda x, frac=group_frac_to_take: x.sample(frac=frac))[self.params.customer_col]
+                .tolist()
+            )
 
             group_guests_map[group_name] = group_guests
-            already_taken_guests.extend(group_guests)
+            reserved_guests.extend(group_guests)
 
         return group_guests_map
 
@@ -176,14 +156,7 @@ class StratificationSplitBuilder:
         """
         max_attempts = 50  # max times to find split
         for _ in range(max_attempts):
-            is_all_sizes_none = all(x is None for x in self.params.map_group_names_to_sizes.values())
-            is_any_size_none = any(x is None for x in self.params.map_group_names_to_sizes.values())
-            if is_all_sizes_none:
-                group_guests_map = self._form_equal_group_splits(guests_data_with_strata)
-            elif is_any_size_none:
-                raise ValueError("Sizes in map_group_names_to_sizes must be 'int' or 'None'.")
-            else:
-                group_guests_map = self._form_unequal_group_splits(guests_data_with_strata)
+            group_guests_map = self._map_stratified_samples(guests_data_with_strata)
 
             control_group = group_guests_map[SplitBuilderParams.control_group_name]
             target_groups = [
