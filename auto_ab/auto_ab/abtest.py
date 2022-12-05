@@ -8,7 +8,6 @@ import os
 from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t, chisquare
 from statsmodels.stats.proportion import proportions_ztest
 from typing import Dict, Union, Optional, Callable, Tuple, List
-from tqdm.auto import tqdm
 
 from auto_ab.auto_ab.graphics import Graphics
 from auto_ab.auto_ab.variance_reduction import VarianceReduction
@@ -221,7 +220,7 @@ class ABTest:
         boot_a_metric = []
         boot_b_metric = []
 
-        for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
+        for _ in range(self.params.hypothesis_params.n_boot_samples):
             a_ids = X[self.params.data_params.id_col].sample(X[self.params.data_params.id_col].nunique(), replace=True)
             b_ids = Y[self.params.data_params.id_col].sample(Y[self.params.data_params.id_col].nunique(), replace=True)
 
@@ -469,7 +468,7 @@ class ABTest:
         X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'A']
         Y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'B']
 
-        for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
+        for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_strata_metric = 0
             y_strata_metric = 0
             for strat in self.params.hypothesis_params.strata_weights.keys():
@@ -510,7 +509,7 @@ class ABTest:
         Y = self.params.data_params.treatment
 
         metric_diffs: List[float] = []
-        for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
+        for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
             y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
             metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
@@ -550,7 +549,7 @@ class ABTest:
         Y = self.params.data_params.treatment
 
         metric_diffs: List[float] = []
-        for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
+        for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
             y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
             metric_diffs.append(self.params.hypothesis_params.metric(x_boot) -
