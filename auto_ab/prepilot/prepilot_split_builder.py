@@ -41,19 +41,11 @@ class PrepilotSplitBuilder():
         return list(BaseSplitElement(el[0], el[1])
                     for el in itertools.product(self.group_sizes, np.arange(1, self.iterations_number+1)))
 
-    def collect(self) -> pd.DataFrame:
-        """Builds dataframe with data for prepilot experiments
-
-        Returns: pandas DataFrame with columns for splits and injected metrics
-        """
-        prepilot_df = self.multliple_split()
-        return prepilot_df
-
     def _update_strat_params(self):
         """Update stratification columns, because of columns names duplicated problem
         """
         self.stratification_params.cols = [el + "_strat"
-                                           if el not in [self.stratification_params.region_col, 
+                                           if el not in [self.stratification_params.main_strata_col, 
                                                          self.stratification_params.split_metric_col
                                                         ]
                                            else el
@@ -95,22 +87,22 @@ class PrepilotSplitBuilder():
         }
 
         self.stratification_params.map_group_names_to_sizes = map_group_names_to_sizes
-        guests_groups = self.split_builder.build_split(guests_with_strata)
+        guests_groups = self.split_builder._build_split(guests_with_strata)
         guests_groups = guests_groups.join(
                         pd.get_dummies(guests_groups["group_name"])
                         .add_prefix("is_")
                         .add_suffix(f"_{control_group_size}_{target_group_size}_{split_number}")
         )
-        return guests_groups[[self.stratification_params.customer_col
+        return guests_groups[[self.stratification_params.id_col
                               ,f"is_control_{control_group_size}_{target_group_size}_{split_number}"]]
 
-    def multliple_split(self) -> pd.DataFrame:
+    def collect(self) -> pd.DataFrame:
         """Calculate multiple split with stratification
 
         Returns: pandas DataFrame with split columns
         """
-        guests_data_with_strata = self.split_builder.assign_strata()
-        experiment_guests = self.guests.loc[:, [self.stratification_params.customer_col]]
+        guests_data_with_strata = self.split_builder._assign_strata(self.split_builder.split_data)
+        experiment_guests = self.guests.loc[:, [self.stratification_params.id_col]]
         for split in self.split_grid:
             experiment_column = f"is_control_{split.control_group_size}_{split.target_group_size}_{split.split_number}"
             guests_split = self._build_split(guests_data_with_strata,
@@ -118,14 +110,22 @@ class PrepilotSplitBuilder():
                                              split.target_group_size,
                                              split.split_number)
             experiment_guests = (experiment_guests
-                                 .merge(guests_split[[self.stratification_params.customer_col
+                                 .merge(guests_split[[self.stratification_params.id_col
                                                       , experiment_column]],
-                                        on=self.stratification_params.customer_col,
+                                        on=self.stratification_params.id_col,
                                         how="left"))
             del guests_split
         guests_data_with_strata = (guests_data_with_strata
                                    .merge(experiment_guests,
-                                          on=self.stratification_params.customer_col,
+                                          on=self.stratification_params.id_col,
                                           how="inner"))
         del experiment_guests
         return guests_data_with_strata
+
+    #def collect(self) -> pd.DataFrame:
+    #    """Builds dataframe with data for prepilot experiments
+#
+#        Returns: pandas DataFrame with columns for splits and injected metrics
+#        """
+#        prepilot_df = self.multliple_split()
+#        return prepilot_df

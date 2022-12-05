@@ -13,9 +13,9 @@ class SplitBuilderParams:
     control_group_name: ClassVar[str] = "control"
 
     map_group_names_to_sizes: Dict[str, Optional[int]]
-    region_col: str
+    main_strata_col: str
     split_metric_col: str
-    customer_col: str = "customer_id"
+    id_col: str = "customer_id"
     cols: List[str] = Field(default_factory=list)  # all cols for stratification
     cat_cols: List[str] = Field(default_factory=list) # this cols'll be encoded as category features
     bin_min_size: int = 100

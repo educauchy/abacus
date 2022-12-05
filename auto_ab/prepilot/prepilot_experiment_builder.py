@@ -242,7 +242,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                                                              self.experiment_params.injects, self.group_sizes,
                                                              self.stratification_params,
                                                              self.experiment_params.iterations_number)
-            guests = prepilot_guests_collector.multliple_split(guests)
+            guests = prepilot_guests_collector.collect(guests)
 
         alpha_scores = pd.DataFrame()
 

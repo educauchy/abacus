@@ -21,19 +21,19 @@ log.setLevel(logging.INFO)
 
 class StratificationSplitBuilder:
     def __init__(self, 
-                 guests_data: pd.DataFrame, 
+                 split_data: pd.DataFrame, 
                  params: SplitBuilderParams):
         """Builds stratification split for DataFrame
 
         Args:
-            guests_data: dataframe with data building split
+            split_data: dataframe with data building split
             params: params for stratification and spilt
         """
-        self.guests_data = guests_data.reset_index(drop=True)
+        self.split_data = split_data.reset_index(drop=True)
         self.params = params
 
 
-    def _prepare_cat_data(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _prepare_categorical(self, df: pd.DataFrame) -> pd.DataFrame:
         """This function converts given categorical features into features suitable for clustering and
         stratification. This functionality is achieved by adding two new features for each categorical
         feature:
@@ -51,7 +51,6 @@ class StratificationSplitBuilder:
             pd.DataFrame: DataFrame with extra columns
         """
         df_cat = df.copy()
-        #log.info("Prepare categorical cols")
         for col in self.params.cat_cols:
             counts = df[col].value_counts()
             counts.iloc[:self.params.n_top_cat] = (
@@ -64,17 +63,15 @@ class StratificationSplitBuilder:
             counts.iloc[self.params.n_top_cat:] = sys.maxsize
             counts = counts.to_dict()
             df_cat[col] = (df_cat[col]
-                          .map(lambda x, counts=counts: counts[x] / self.guests_data.shape[0])
+                          .map(lambda x, counts=counts: counts[x] / self.split_data.shape[0])
             )
-        
-        #self.guests_data = df.reset_index(drop=True)
         return df_cat
 
     def binnarize(self, df: pd.DataFrame) -> pd.DataFrame:
         log.info("Calculate stratas for guest table")
         lst = []
-        for region in list(df[self.params.region_col].unique()):
-            dfr = df[df[self.params.region_col] == region]
+        for region in list(df[self.params.main_strata_col].unique()):
+            dfr = df[df[self.params.main_strata_col] == region]
 
             # check size of selection by region to skip unreasonable split
             if len(dfr) >= self.params.bin_min_size * self.params.n_bins_rto:
@@ -91,7 +88,7 @@ class StratificationSplitBuilder:
                     res = self.bin_with_clustering(dfr[labels == label], region, label, self.params)
                     lst.append(res)
             else:
-                res = (dfr[[self.params.region_col, self.params.split_metric_col]]
+                res = (dfr[[self.params.main_strata_col, self.params.split_metric_col]]
                     .rename(columns={self.params.split_metric_col: f"{self.params.split_metric_col}_bin"})
                 )
                 res["cls"] = -1
@@ -123,63 +120,57 @@ class StratificationSplitBuilder:
 
         res = pd.DataFrame(
             {
-                params.region_col: region,
+                params.main_strata_col: region,
                 f"{params.split_metric_col}_bin": label,
                 "cls": inlabels
             }, index=df_region_labeled.index
         )
-        res = res.assign(label=lambda x: x[params.region_col].astype(str) + x[f"{params.split_metric_col}_bin"] + x.cls)
+        res = res.assign(label=lambda x: x[params.main_strata_col].astype(str) + x[f"{params.split_metric_col}_bin"] + x.cls)
         return res
 
 
-    def assign_strata(self) -> pd.DataFrame:
+    def _assign_strata(self, df) -> pd.DataFrame:
         """Assigns strata for rows
 
         Returns:
             DataFrame with strata columns
         """
-        #self._prepare_cat_data()
-        transform = [self._prepare_cat_data,self.binnarize]
+        transform = [self._prepare_categorical,self.binnarize]
         pipeline = Pipeline(transform)
-        stratified_data = pipeline(self.guests_data)
-        #return pipeline(self.df)
-        #cat_prepared_df = self._prepare_cat_data()
-        #log.info("Calculate stratas for guest table")
-        #strata = binnarize(cat_prepared_df, self.params)
-        #stratified_data = self.guests_data.loc[strata.index].assign(strata=strata)
+        stratified_data = pipeline(df)
         return stratified_data
 
 
-    def _map_stratified_samples(self, guests:pd.DataFrame) -> pd.DataFrame:
+    def _map_stratified_samples(self, split_df:pd.DataFrame) -> pd.DataFrame:
         if all(x is None for x in self.params.map_group_names_to_sizes.values()):
             (self.params.map_group_names_to_sizes
-                .update((key,len(guests)//len(self.params.map_group_names_to_sizes)) 
+                .update((key,len(split_df)//len(self.params.map_group_names_to_sizes)) 
                         for key in self.params.map_group_names_to_sizes
                         )
             )
     
-        group_guests_map = pd.DataFrame(columns=[self.params.customer_col, "group_name"])#dict()
+        group_map = pd.DataFrame(columns=[self.params.id_col, "group_name"])
         for group_name, group_size in self.params.map_group_names_to_sizes.items():
-            available_guests = (guests.loc[~guests[self.params.customer_col]
-                                .isin(group_guests_map[self.params.customer_col].values)]
+            available_id = (split_df.loc[~split_df[self.params.id_col]
+                                .isin(group_map[self.params.id_col].values)]
                                 .copy()
             )
-            group_frac_to_take = min(group_size / len(available_guests), 1)
+            group_frac_to_take = min(group_size / len(available_id), 1)
 
-            group_guests = (
-                available_guests
+            groups = (
+                available_id
                 .groupby("strata", group_keys=False)
-                .apply(lambda x, frac=group_frac_to_take: x.sample(frac=frac))[self.params.customer_col]
+                .apply(lambda x, frac=group_frac_to_take: x.sample(frac=frac))[self.params.id_col]
                 .to_frame().reset_index(drop=True)
             )
-            group_guests["group_name"] = group_name
-            group_guests_map = pd.concat([group_guests_map, group_guests])
+            groups["group_name"] = group_name
+            group_map = pd.concat([group_map, groups])
 
-        guests = guests.merge(group_guests_map, 
-                              on = self.params.customer_col,
+        split_df = split_df.merge(group_map, 
+                              on = self.params.id_col,
                               how = "left"
         )
-        return guests
+        return split_df
     
     def _check_groups(self, 
                     df_with_groups:pd.DataFrame,
@@ -191,8 +182,8 @@ class StratificationSplitBuilder:
         for group in target_groups_names:
             #удалить после внесение изменений в парметры аб теста
             map_dict = {control_name:"A",group:"B"}
-            guests_for_test = df_with_groups.copy()
-            guests_for_test["group_name"] = guests_for_test["group_name"].map(map_dict)
+            groups_df = df_with_groups.copy()
+            groups_df["group_name"] = groups_df["group_name"].map(map_dict)
             result_params = ResultParams()
             splitter_params = SplitterParams()
             simulation_params = SimulationParams()
@@ -201,11 +192,11 @@ class StratificationSplitBuilder:
             hypothesis_params = HypothesisParams(alpha=self.params.pvalue)
             for column in self.params.cols + self.params.cat_cols :
                 data_params = DataParams(group_col="group_name",
-                                    id_col = self.params.customer_col,
+                                    id_col = self.params.id_col,
                                     target = column
                 )
                 ab_params = ABTestParams(data_params, simulation_params, hypothesis_params, result_params, splitter_params)
-                ab_test = ABTest(guests_for_test, ab_params)
+                ab_test = ABTest(groups_df, ab_params)
 
                 if column in self.params.cols: 
                     test_result = ab_test.test_hypothesis_ttest()
@@ -222,35 +213,33 @@ class StratificationSplitBuilder:
         return check_flag
 
 
-    def build_split(self, guests_data_with_strata: pd.DataFrame) -> pd.DataFrame:
+    def _build_split(self, df_with_strata_col: pd.DataFrame) -> pd.DataFrame:
         """Builds strarified split
 
         Args:
-            guests_data_with_strata: DataFrame with strata column
+            df_with_strata_col: DataFrame with strata column
 
         Returns:
             DataFrame with split
         """
         max_attempts = 50  # max times to find split
         for _ in range(max_attempts):
-            group_guests_map = self._map_stratified_samples(guests_data_with_strata)
-            target_groups = group_guests_map["group_name"].unique().tolist()
+            groups_maped = self._map_stratified_samples(df_with_strata_col)
+            target_groups = groups_maped["group_name"].unique().tolist()
             target_groups.remove(SplitBuilderParams.control_group_name)
-            check_flag = self._check_groups(group_guests_map, SplitBuilderParams.control_group_name, target_groups)
+            check_flag = self._check_groups(groups_maped, SplitBuilderParams.control_group_name, target_groups)
 
             if check_flag:
-                log.info("Success!")
-
-                return group_guests_map
+                return groups_maped
 
         log.error("Split failed!")
-        return guests_data_with_strata
+        return df_with_strata_col
     
 
-    def build_target_control_groups(self) -> pd.DataFrame:
-        if len(self.guests_data) == 0:
-            log.error("Empty guests_data")
-            return self.guests_data
-        # calculate stratas
-        guests_data_with_strata = self.assign_strata()
-        return self.build_split(guests_data_with_strata)
+    def collect(self) -> pd.DataFrame:
+        if len(self.split_data) == 0:
+            return self.split_data
+
+        transform = [self._assign_strata, self._build_split]
+        pipeline = Pipeline(transform)
+        return pipeline(self.split_data)
