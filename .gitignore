@@ -134,3 +134,4 @@ dmypy.json
 
 # Custom
 **/.DS_store
+.idea/

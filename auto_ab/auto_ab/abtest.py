@@ -8,14 +8,11 @@ import os
 from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t, chisquare
 from statsmodels.stats.proportion import proportions_ztest
 from typing import Dict, Union, Optional, Callable, Tuple, List
-from tqdm.auto import tqdm
-# from params import *
-import multiprocessing
-from multiprocessing import Process, Pool, current_process
 
 from auto_ab.auto_ab.graphics import Graphics
 from auto_ab.auto_ab.variance_reduction import VarianceReduction
-from auto_ab.auto_ab.params import ABTestParams
+from auto_ab.auto_ab.params import ABTestParams, DataParams, HypothesisParams
+
 sys.path.append('..')
 from auto_ab.resplitter.resplit_builder import ResplitBuilder
 from auto_ab.resplitter.params import ResplitParams
@@ -223,7 +220,7 @@ class ABTest:
         boot_a_metric = []
         boot_b_metric = []
 
-        for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
+        for _ in range(self.params.hypothesis_params.n_boot_samples):
             a_ids = X[self.params.data_params.id_col].sample(X[self.params.data_params.id_col].nunique(), replace=True)
             b_ids = Y[self.params.data_params.id_col].sample(Y[self.params.data_params.id_col].nunique(), replace=True)
 
@@ -471,7 +468,7 @@ class ABTest:
         X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'A']
         Y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'B']
 
-        for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
+        for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_strata_metric = 0
             y_strata_metric = 0
             for strat in self.params.hypothesis_params.strata_weights.keys():
@@ -511,38 +508,8 @@ class ABTest:
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
 
-        # if os.cpu_count() - 2 >= 2:
-        #     x_boot = []
-        #     y_boot = []
-        #
-        #     def boot_samples(data, group) -> None:
-        #         print("{0} has pid: {1} with parent pid: {2}".format(current_process().name, os.getpid(), os.getppid()))
-        #         if group == 'A':
-        #             x_boot.append(np.mean(data))
-        #         elif group == 'B':
-        #             y_boot.append(np.mean(data))
-        #
-        #     multiprocessing.set_start_method('spawn')
-        #
-        #     p1 = Process(target=boot_samples, args=(X, 'A'))
-        #     p2 = Process(target=boot_samples, args=(Y, 'B'))
-        #     p1.start()
-        #     p2.start()
-        #     p1.join()
-        #     p2.join()
-        #
-        #     metric_diffs = np.array(x_boot) - np.array(y_boot)
-        #     pd_metric_diffs = pd.DataFrame(metric_diffs)
-        # else:
-        #     metric_diffs: List[float] = []
-        #     for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
-        #         x_boot = np.random.choice(X, size=X.shape[0], replace=True)
-        #         y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
-        #         metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
-        #     pd_metric_diffs = pd.DataFrame(metric_diffs)
-
         metric_diffs: List[float] = []
-        for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
+        for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
             y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
             metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
@@ -582,7 +549,7 @@ class ABTest:
         Y = self.params.data_params.treatment
 
         metric_diffs: List[float] = []
-        for _ in tqdm(range(self.params.hypothesis_params.n_boot_samples)):
+        for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_boot = np.random.choice(X, size=X.shape[0], replace=True)
             y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
             metric_diffs.append(self.params.hypothesis_params.metric(x_boot) -
@@ -723,16 +690,10 @@ if __name__ == '__main__':
             print(exc)
 
     data_params = DataParams(**ab_config['data_params'])
-    simulation_params = SimulationParams(**ab_config['simulation_params'])
     hypothesis_params = HypothesisParams(**ab_config['hypothesis_params'])
-    result_params = ResultParams(**ab_config['result_params'])
-    splitter_params = SplitterParams(**ab_config['splitter_params'])
 
     ab_params = ABTestParams(data_params,
-                             simulation_params,
-                             hypothesis_params,
-                             result_params,
-                             splitter_params)
+                             hypothesis_params)
 
     df = pd.read_csv('../notebooks/ab_data.csv')
 
@@ -740,23 +701,3 @@ if __name__ == '__main__':
     # ab_obj = ab_obj.cuped().bucketing()
     # print(ab_obj.params.data_params)
     ab_obj.test_hypothesis_boot_est()
-
-
-    # a = list(np.random.random(10_000))
-    # b = list(np.random.random(10_000))
-    #
-    # res = []
-    # def func(data) -> None:
-    #     print("{0} has pid: {1} with parent pid: {2}".format(current_process().name, os.getpid(), os.getppid()))
-    #     res.append(np.mean(data))
-    #
-    # multiprocessing.set_start_method('spawn')
-    #
-    # p1 = Process(target=func, args=(a))
-    # p2 = Process(target=func, args=(b))
-    # p1.start()
-    # p2.start()
-    # p1.join()
-    # p2.join()
-    #
-    # print(res)

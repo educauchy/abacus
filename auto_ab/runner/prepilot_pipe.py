@@ -44,12 +44,9 @@ if __name__=="__main__":
     df["country"] = np.random.randint(1, 3, df.shape[0])
 
     data_params = DataParams(**ab_config['data_params'])
-    simulation_params = SimulationParams(**ab_config['simulation_params'])
     hypothesis_params = HypothesisParams(**ab_config['hypothesis_params'])
-    result_params = ResultParams(**ab_config['result_params'])
-    splitter_params = SplitterParams(**ab_config['splitter_params'])
 
-    ab_params = ABTestParams(data_params,simulation_params,hypothesis_params,result_params,splitter_params)
+    ab_params = ABTestParams(data_params,hypothesis_params)
 
     ab_params = ABTestParams()
     ab_params.data_params.numerator = 'numerator'

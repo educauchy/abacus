@@ -33,23 +33,6 @@ class DataParams:
     treatment: np.ndarray = np.array([])
 
 @dataclass(config=ValidationConfig)
-class ResultParams:
-    to_csv: bool = True
-    csv_path: str = '/app/data/internal/guide/solid_mde.csv'
-
-@dataclass(config=ValidationConfig)
-class SplitterParams:
-    split_rate: float = 0.5
-    name: str = 'default'
-
-@dataclass(config=ValidationConfig)
-class SimulationParams:
-    n_iter: int = 100
-    split_rates: List[float] = Field(default_factory=list)
-    vars: List[float] = Field(default=[0, 1, 2, 3, 4, 5])
-    extra_params: List = Field(default_factory=list)
-
-@dataclass(config=ValidationConfig)
 class HypothesisParams:
     alpha: float = 0.05
     beta: float = 0.2
@@ -108,7 +91,4 @@ class HypothesisParams:
 @dataclass
 class ABTestParams:
     data_params: DataParams = DataParams()
-    simulation_params: SimulationParams = SimulationParams()
     hypothesis_params: HypothesisParams = HypothesisParams()
-    result_params: ResultParams = ResultParams()
-    splitter_params: SplitterParams = SplitterParams()
