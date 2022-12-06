@@ -1,5 +1,6 @@
 import sys
 import logging
+from typing import List
 import pandas as pd
 import numpy as np
 import hdbscan
@@ -9,7 +10,7 @@ from fastcore.transform import Pipeline
 from auto_ab.stratification.params import SplitBuilderParams
 from auto_ab.auto_ab.abtest import ABTest
 from auto_ab.auto_ab.params import ABTestParams
-from auto_ab.auto_ab.params import DataParams, SimulationParams, HypothesisParams, ResultParams, SplitterParams
+from auto_ab.auto_ab.params import DataParams, HypothesisParams
 pd.options.mode.chained_assignment = None
 
 log = logging.getLogger(__name__)
@@ -179,9 +180,6 @@ class StratificationSplitBuilder:
             map_dict = {control_name:"A",group:"B"}
             groups_df = df_with_groups.copy()
             groups_df["group_name"] = groups_df["group_name"].map(map_dict)
-            result_params = ResultParams()
-            splitter_params = SplitterParams()
-            simulation_params = SimulationParams()
             ####
 
             hypothesis_params = HypothesisParams(alpha=self.params.pvalue)
@@ -190,7 +188,7 @@ class StratificationSplitBuilder:
                                     id_col = self.params.id_col,
                                     target = column
                 )
-                ab_params = ABTestParams(data_params, simulation_params, hypothesis_params, result_params, splitter_params)
+                ab_params = ABTestParams(data_params, hypothesis_params)
                 ab_test = ABTest(groups_df, ab_params)
 
                 if column in self.params.cols: 
