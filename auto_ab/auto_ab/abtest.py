@@ -30,8 +30,8 @@ class ABTest:
         self.params = params
         self.__check_columns(dataset, 'init')
         self.__dataset = dataset
-        self.params.data_params.control = self.__get_group('A', self.dataset)
-        self.params.data_params.treatment = self.__get_group('B', self.dataset)
+        self.params.data_params.control = self.__get_group(params.data_params.group_map['A'], self.dataset)
+        self.params.data_params.treatment = self.__get_group(params.data_params.group_map['B'], self.dataset)
 
     @property
     def dataset(self):
@@ -88,7 +88,7 @@ class ABTest:
         if not is_valid_col:
             raise Exception('One or more columns are not presented in dataframe')
 
-    def __get_group(self, group_label: str = 'A', df: Optional[pd.DataFrame] = None) -> np.ndarray:
+    def __get_group(self, group_label: str, df: Optional[pd.DataFrame] = None) -> np.ndarray:
         """Gets target metric column based on desired group label
 
         Args:
@@ -105,7 +105,7 @@ class ABTest:
                             self.params.data_params.target].to_numpy()
         elif self.params.hypothesis_params.metric_type == 'solid':
             group = X.loc[X[self.params.data_params.group_col] == group_label, \
-                          self.params.data_params.target_flg].to_numpy()
+                            self.params.data_params.target_flg].to_numpy()
         return group
         
     def _manual_ttest(self, A_mean: float, A_var: float, A_size: int,
@@ -150,7 +150,7 @@ class ABTest:
         return result
 
     def _linearize(self) -> None:
-            X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'A']
+            X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['A']]
             K = round(sum(X[self.params.data_params.numerator]) / sum(X[self.params.data_params.denominator]), 4)
 
             self.__dataset.loc[:, f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"] = \
@@ -210,8 +210,8 @@ class ABTest:
             Test result: 1 - significant different, 0 - insignificant difference
         """
         if X is None and Y is None:
-            X = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'A']
-            Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'B']
+            X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['A']]
+            Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['B']]
 
         a_metric_total = sum(X[self.params.data_params.numerator]) / sum(X[self.params.data_params.denominator])
         b_metric_total = sum(Y[self.params.data_params.numerator]) / sum(Y[self.params.data_params.denominator])
@@ -267,8 +267,8 @@ class ABTest:
             Dictionary with following properties: test statistic, p-value, test result
             Test result: 1 - significant different, 0 - insignificant difference
         """
-        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'A']
-        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'B']
+        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['A']]
+        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['B']]
 
         A_mean, A_var = self._taylor_params(X)
         B_mean, B_var = self._taylor_params(Y)
@@ -283,8 +283,8 @@ class ABTest:
             Dictionary with following properties: test statistic, p-value, test result
             Test result: 1 - significant different, 0 - insignificant difference
         """
-        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'A']
-        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == 'B']
+        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['A']]
+        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['B']]
 
         A_mean, A_var = self._delta_params(X)
         B_mean, B_var = self._delta_params(Y)
@@ -376,8 +376,8 @@ class ABTest:
             Dictionary with following properties: test statistic, p-value, test result
             Test result: 1 - significant different, 0 - insignificant difference
         """
-        X = self.__get_group('A')
-        Y = self.__get_group('B')
+        X = self.__get_group(self.params.data_params.group_map['A'])
+        Y = self.__get_group(self.params.data_params.group_map['B'])
 
         observed = np.array([sum(Y) , len(Y) - sum(Y)])
         expected = np.array([sum(X) , len(X) - sum(X)])
@@ -401,8 +401,8 @@ class ABTest:
             Dictionary with following properties: test statistic, p-value, test result
             Test result: 1 - significant different, 0 - insignificant difference
         """
-        X = self.__get_group('A')
-        Y = self.__get_group('B')
+        X = self.__get_group(self.params.data_params.group_map['A'])
+        Y = self.__get_group(self.params.data_params.group_map['B'])
 
         count = np.array([sum(X) , sum(Y)])
         nobs  = np.array([len(X), len(Y)])
@@ -465,8 +465,8 @@ class ABTest:
             Test result: 1 - significant different, 0 - insignificant difference
         """
         metric_diffs: List[float] = []
-        X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'A']
-        Y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == 'B']
+        X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['A']]
+        Y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['B']]
 
         for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_strata_metric = 0
@@ -610,8 +610,8 @@ class ABTest:
                             covariate=self.params.data_params.covariate)
 
         params_new = copy.deepcopy(self.params)
-        params_new.data_params.control = self.__get_group('A', result_df)
-        params_new.data_params.treatment = self.__get_group('B', result_df)
+        params_new.data_params.control = self.__get_group(self.params.data_params.group_map['A'], result_df)
+        params_new.data_params.treatment = self.__get_group(self.params.data_params.group_map['B'], result_df)
 
         return ABTest(result_df, params_new)
 
@@ -631,8 +631,8 @@ class ABTest:
                                groups=self.params.data_params.group_col)
 
         params_new = copy.deepcopy(self.params)
-        params_new.data_params.control = self.__get_group('A', result_df)
-        params_new.data_params.treatment = self.__get_group('B', result_df)
+        params_new.data_params.control = self.__get_group(self.params.data_params.group_map['A'], result_df)
+        params_new.data_params.treatment = self.__get_group(self.params.data_params.group_map['B'], result_df)
 
         return ABTest(result_df, params_new)
 

@@ -101,16 +101,10 @@ if __name__ == '__main__':
             print(exc)
 
     data_params = DataParams(**ab_config['data_params'])
-    simulation_params = SimulationParams(**ab_config['simulation_params'])
     hypothesis_params = HypothesisParams(**ab_config['hypothesis_params'])
-    result_params = ResultParams(**ab_config['result_params'])
-    splitter_params = SplitterParams(**ab_config['splitter_params'])
 
     ab_params = ABTestParams(data_params,
-                             simulation_params,
-                             hypothesis_params,
-                             result_params,
-                             splitter_params)
+                             hypothesis_params)
 
     dots = 10_000
     boot_samples = 5000
