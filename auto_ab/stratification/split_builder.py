@@ -1,15 +1,11 @@
 import sys
 import logging
-from typing import Dict, List
-from math import floor
 import pandas as pd
 import numpy as np
 import hdbscan
 from sklearn.preprocessing import robust_scale
 from auto_ab.stratification.params import SplitBuilderParams
 from fastcore.transform import Pipeline
-from auto_ab.stratification.stat_test import StatTest
-#from auto_ab.stratification.binning import binnarize
 from auto_ab.stratification.params import SplitBuilderParams
 from auto_ab.auto_ab.abtest import ABTest
 from auto_ab.auto_ab.params import ABTestParams
@@ -68,7 +64,6 @@ class StratificationSplitBuilder:
         return df_cat
 
     def binnarize(self, df: pd.DataFrame) -> pd.DataFrame:
-        log.info("Calculate stratas for guest table")
         lst = []
         for region in list(df[self.params.main_strata_col].unique()):
             dfr = df[df[self.params.main_strata_col] == region]
