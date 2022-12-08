@@ -5,7 +5,7 @@ import pandas as pd
 import sys
 import yaml
 import os
-from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t, chisquare
+from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t, chisquare, norm
 from statsmodels.stats.proportion import proportions_ztest
 from typing import Dict, Union, Optional, Callable, Tuple, List
 
@@ -556,18 +556,35 @@ class ABTest:
                                 self.params.hypothesis_params.metric(y_boot) )
         pd_metric_diffs = pd.DataFrame(metric_diffs)
 
-        left_quant = self.params.hypothesis_params.alpha / 2
-        right_quant = 1 - self.params.hypothesis_params.alpha / 2
-        ci = pd_metric_diffs.quantile([left_quant, right_quant])
-        ci_left, ci_right = float(ci.iloc[0]), float(ci.iloc[1])
+        boot_mean = pd_metric_diffs.mean()
+        boot_std = pd_metric_diffs.std()
+        zero_pvalue = norm.sf(0, loc=boot_mean, scale=boot_std)
 
         test_result: int = 0 # 0 - cannot reject H0, 1 - reject H0
-        if ci_left > 0 or ci_right < 0: # left border of ci > 0 or right border of ci < 0
-            test_result = 1
+        if self.params.hypothesis_params.alternative == 'two-sided':
+            left_quant = self.params.hypothesis_params.alpha / 2
+            right_quant = 1 - self.params.hypothesis_params.alpha / 2
+            ci = pd_metric_diffs.quantile([left_quant, right_quant])
+            ci_left, ci_right = float(ci.iloc[0]), float(ci.iloc[1])
+
+            if ci_left > 0 or ci_right < 0: # 0 is not in critical area
+                test_result = 1
+        elif self.params.hypothesis_params.alternative == 'left':
+            left_quant = self.params.hypothesis_params.alpha
+            ci = pd_metric_diffs.quantile([left_quant])
+            ci_left = float(ci.iloc[0])
+            if ci_left < 0: # o is not is critical area
+                test_result = 1
+        elif self.params.hypothesis_params.alternative == 'right':
+            right_quant = self.params.hypothesis_params.alpha
+            ci = pd_metric_diffs.quantile([right_quant])
+            ci_right = float(ci.iloc[0])
+            if 0 < ci_right: # 0 is not in critical area
+                test_result = 1
 
         result = {
             'stat': None,
-            'p-value': None,
+            'p-value': zero_pvalue,
             'result': test_result
         }
         return result
