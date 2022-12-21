@@ -2,13 +2,13 @@ from typing import Union
 import itertools
 import numpy as np
 import pandas as pd
-from auto_ab.splitter.params import SplitBuilderParams
-from auto_ab.mde_researcher._experiment_structures import MdeAlphaExperiment, MdeBetaExperiment
-from auto_ab.mde_researcher._abstract_mde_experiment_builder import AbstractMdeResearchBuilder
-from auto_ab.mde_researcher.multiple_split_builder import MultipleSplitBuilder
-from auto_ab.mde_researcher.params import MdeParams
-from auto_ab.auto_ab.abtest import ABTest
-from auto_ab.auto_ab.params import ABTestParams
+from abacus.splitter.params import SplitBuilderParams
+from abacus.mde_researcher._experiment_structures import MdeAlphaExperiment, MdeBetaExperiment
+from abacus.mde_researcher._abstract_mde_experiment_builder import AbstractMdeResearchBuilder
+from abacus.mde_researcher.multiple_split_builder import MultipleSplitBuilder
+from abacus.mde_researcher.params import MdeParams
+from abacus.auto_ab.abtest import ABTest
+from abacus.auto_ab.params import ABTestParams
 
 
 class MdeResearchBuilder(AbstractMdeResearchBuilder):

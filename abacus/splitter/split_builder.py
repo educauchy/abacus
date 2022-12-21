@@ -7,10 +7,10 @@ from hdbscan import HDBSCAN
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.pipeline import Pipeline as Pipe
 from fastcore.transform import Pipeline
-from auto_ab.splitter.params import SplitBuilderParams
-from auto_ab.auto_ab.abtest import ABTest
-from auto_ab.auto_ab.params import ABTestParams
-from auto_ab.auto_ab.params import DataParams, HypothesisParams
+from abacus.splitter.params import SplitBuilderParams
+from abacus.auto_ab.abtest import ABTest
+from abacus.auto_ab.params import ABTestParams
+from abacus.auto_ab.params import DataParams, HypothesisParams
 pd.options.mode.chained_assignment = None
 
 log = logging.getLogger(__name__)

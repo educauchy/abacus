@@ -1,5 +1,5 @@
 import pandas as pd
-from auto_ab.resplitter.params import ResplitParams
+from abacus.resplitter.params import ResplitParams
 
 
 class ResplitBuilder():

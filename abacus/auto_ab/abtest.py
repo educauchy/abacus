@@ -8,13 +8,13 @@ from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t, chisquare, no
 from statsmodels.stats.proportion import proportions_ztest
 from typing import Dict, Union, Optional, Callable, Tuple, List
 
-from auto_ab.auto_ab.graphics import Graphics
-from auto_ab.auto_ab.variance_reduction import VarianceReduction
-from auto_ab.auto_ab.params import ABTestParams, DataParams, HypothesisParams
+from abacus.auto_ab.graphics import Graphics
+from abacus.auto_ab.variance_reduction import VarianceReduction
+from abacus.auto_ab.params import ABTestParams, DataParams, HypothesisParams
 
 sys.path.append('..')
-from auto_ab.resplitter.resplit_builder import ResplitBuilder
-from auto_ab.resplitter.params import ResplitParams
+from abacus.resplitter.resplit_builder import ResplitBuilder
+from abacus.resplitter.params import ResplitParams
 
 
 metric_name_typing = Union[str, Callable[[np.array], Union[int, float]]]

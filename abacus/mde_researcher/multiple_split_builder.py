@@ -3,9 +3,9 @@ import copy
 import itertools
 import numpy as np
 import pandas as pd
-from auto_ab.splitter.params import SplitBuilderParams
-from auto_ab.splitter.split_builder import SplitBuilder
-from auto_ab.mde_researcher._experiment_structures import BaseSplitElement
+from abacus.splitter.params import SplitBuilderParams
+from abacus.splitter.split_builder import SplitBuilder
+from abacus.mde_researcher._experiment_structures import BaseSplitElement
 
 
 class MultipleSplitBuilder():
