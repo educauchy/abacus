@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import sys
 import yaml
-import os
 from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t, chisquare, norm
 from statsmodels.stats.proportion import proportions_ztest
 from typing import Dict, Union, Optional, Callable, Tuple, List
@@ -30,8 +29,8 @@ class ABTest:
         self.params = params
         self.__check_columns(dataset, 'init')
         self.__dataset = dataset
-        self.params.data_params.control = self.__get_group(params.data_params.group_map['A'], self.dataset)
-        self.params.data_params.treatment = self.__get_group(params.data_params.group_map['B'], self.dataset)
+        self.params.data_params.control = self.__get_group(self.params.data_params.control_name, self.dataset)
+        self.params.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
     @property
     def dataset(self):
@@ -376,8 +375,8 @@ class ABTest:
             Dictionary with following properties: test statistic, p-value, test result
             Test result: 1 - significant different, 0 - insignificant difference
         """
-        X = self.__get_group(self.params.data_params.group_map['A'])
-        Y = self.__get_group(self.params.data_params.group_map['B'])
+        X = self.__get_group(self.params.data_params.control_name, self.dataset)
+        Y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
         observed = np.array([sum(Y) , len(Y) - sum(Y)])
         expected = np.array([sum(X) , len(X) - sum(X)])
@@ -401,13 +400,11 @@ class ABTest:
             Dictionary with following properties: test statistic, p-value, test result
             Test result: 1 - significant different, 0 - insignificant difference
         """
-        X = self.__get_group(self.params.data_params.group_map['A'])
-        Y = self.__get_group(self.params.data_params.group_map['B'])
+        X = self.__get_group(self.params.data_params.control_name, self.dataset)
+        Y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
         count = np.array([sum(X) , sum(Y)])
         nobs  = np.array([len(X), len(Y)])
-        print('Conversion A: {:.4f}'.format(sum(X)/len(X)))
-        print('Conversion B: {:.4f}'.format(sum(Y)/len(Y)))
         stat, pvalue = proportions_ztest(count, nobs)
 
         test_result: int = 0
@@ -627,8 +624,8 @@ class ABTest:
                             covariate=self.params.data_params.covariate)
 
         params_new = copy.deepcopy(self.params)
-        params_new.data_params.control = self.__get_group(self.params.data_params.group_map['A'], result_df)
-        params_new.data_params.treatment = self.__get_group(self.params.data_params.group_map['B'], result_df)
+        params_new.data_params.control = self.__get_group(self.params.data_params.control_name, result_df)
+        params_new.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, result_df)
 
         return ABTest(result_df, params_new)
 
@@ -648,8 +645,8 @@ class ABTest:
                                groups=self.params.data_params.group_col)
 
         params_new = copy.deepcopy(self.params)
-        params_new.data_params.control = self.__get_group(self.params.data_params.group_map['A'], result_df)
-        params_new.data_params.treatment = self.__get_group(self.params.data_params.group_map['B'], result_df)
+        params_new.data_params.control = self.__get_group(self.params.data_params.control_name, result_df)
+        params_new.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, result_df)
 
         return ABTest(result_df, params_new)
 
@@ -715,6 +712,4 @@ if __name__ == '__main__':
     df = pd.read_csv('../notebooks/ab_data.csv')
 
     ab_obj = ABTest(df, ab_params)
-    # ab_obj = ab_obj.cuped().bucketing()
-    # print(ab_obj.params.data_params)
     ab_obj.test_hypothesis_boot_est()

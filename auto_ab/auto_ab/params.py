@@ -17,7 +17,8 @@ class DataParams:
     path: str = '../notebooks/ab_data.csv'
     id_col: str = 'id'
     group_col: str = 'groups'
-    group_map: Dict[str, str] = Field(default_factory=lambda: {'A': 'control', 'B': 'treatment'})#{'A': 'control', 'B': 'treatment'}
+    control_name: str = 'A'
+    treatment_name: str = 'B'
     strata_col: str = 'country'
     target: str = 'height_now'
     target_flg: str = 'bought'

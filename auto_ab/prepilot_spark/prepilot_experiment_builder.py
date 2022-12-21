@@ -3,11 +3,11 @@ from pyspark.sql import DataFrame
 import pyspark.sql.functions as F
 import pyspark.sql.types as T
 from pyspark.sql.functions import pandas_udf
-from auto_ab.stratification.params import SplitBuilderParams
+from auto_ab.splitter.params import SplitBuilderParams
 from auto_ab.prepilot_spark.prepilot_split_builder import PrepilotSplitBuilder
 from auto_ab.prepilot_spark.abstract_experiment_builder import AbstractExperimentBuilder
 from auto_ab.prepilot_spark.params import PrepilotParams
-from auto_ab.analysis.stat_test import PeriodStatTest
+#from auto_ab.analysis.stat_test import PeriodStatTest
 
 
 _ERROR_RES_SCHEMA = T.StructType([T.StructField("group_sizes", T.StringType(), False),
