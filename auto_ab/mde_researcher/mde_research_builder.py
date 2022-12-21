@@ -3,22 +3,22 @@ import itertools
 import numpy as np
 import pandas as pd
 from auto_ab.splitter.params import SplitBuilderParams
-from auto_ab.prepilot.experiment_structures import PrepilotAlphaExperiment, PrepilotBetaExperiment
-from auto_ab.prepilot.abstract_experiment_builder import AbstractExperimentBuilder
-from auto_ab.prepilot.prepilot_split_builder import PrepilotSplitBuilder
-from auto_ab.prepilot.params import PrepilotParams
+from auto_ab.mde_researcher._experiment_structures import MdeAlphaExperiment, MdeBetaExperiment
+from auto_ab.mde_researcher._abstract_mde_experiment_builder import AbstractMdeResearchBuilder
+from auto_ab.mde_researcher.multiple_split_builder import MultipleSplitBuilder
+from auto_ab.mde_researcher.params import MdeParams
 from auto_ab.auto_ab.abtest import ABTest
 from auto_ab.auto_ab.params import ABTestParams
 
 
-class PrepilotExperimentBuilder(AbstractExperimentBuilder):
+class MdeResearchBuilder(AbstractMdeResearchBuilder):
     """Calculates I and II type errors for different group sizes and injects.
     """
 
     def __init__(self,
                  guests: pd.DataFrame,
                  abtest_params: ABTestParams,
-                 experiment_params: PrepilotParams,
+                 experiment_params: MdeParams,
                  stratification_params: SplitBuilderParams):
         """
         Args:
@@ -33,7 +33,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
 
     def _calc_experiment_grid_cell(self,
                                    guests_with_splits: pd.DataFrame,
-                                   grid_element: Union[PrepilotBetaExperiment, PrepilotAlphaExperiment]
+                                   grid_element: Union[MdeBetaExperiment, MdeAlphaExperiment]
     ) -> pd.DataFrame:
         """Calculates stat test forr one experiment grid element.
 
@@ -54,7 +54,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                                             .map({1: self.abtest_params.data_params.treatment_name, 
                                                   0: self.abtest_params.data_params.control_name})
         )
-        if isinstance(grid_element, PrepilotBetaExperiment):
+        if isinstance(grid_element, MdeBetaExperiment):
             guests_with_splits[metric_col].where(guests_with_splits[split_column]==self.abtest_params.data_params.control_name,
                                                  guests_with_splits[metric_col]*grid_element.inject, 
                                                  axis=0,
@@ -166,7 +166,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                     else:
                         for split_number in range(1,self.experiment_params.iterations_number + 1):
                             # experiment
-                            experiment_params = PrepilotBetaExperiment(group_sizes=group_size,
+                            experiment_params = MdeBetaExperiment(group_sizes=group_size,
                                                                        split_number=split_number,
                                                                        metric_name=metric_name,
                                                                        inject=inject)
@@ -239,7 +239,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         Returns: pandas DataFrame with I type error.
         """
         if not is_splited:
-            prepilot_guests_collector = PrepilotSplitBuilder(guests, self.experiment_params.metrics_names,
+            prepilot_guests_collector = MultipleSplitBuilder(guests, self.experiment_params.metrics_names,
                                                              self.experiment_params.injects, self.group_sizes,
                                                              self.stratification_params,
                                                              self.experiment_params.iterations_number)
@@ -250,7 +250,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         for metric_name in self.experiment_params.metrics_names:
             for group_size in self.group_sizes:
                 for split_number in range(1,self.experiment_params.iterations_number + 1):
-                    experiment_params = PrepilotAlphaExperiment(group_sizes=group_size,
+                    experiment_params = MdeAlphaExperiment(group_sizes=group_size,
                                                                 split_number=split_number,
                                                                 metric_name=metric_name)
                     split_column = f"is_control_{experiment_params.control_group_size}_{experiment_params.target_group_size}_{experiment_params.split_number}"
@@ -284,7 +284,7 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         Returns: pandas DataFrames with aggregated results of experiment.
 
         """
-        prepilot_split_builder = PrepilotSplitBuilder(self.guests,
+        prepilot_split_builder = MultipleSplitBuilder(self.guests,
                                                          self.experiment_params.metrics_names,
                                                          self.experiment_params.injects,
                                                          self.group_sizes,

@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AbstractExperimentBuilder:
+class AbstractMdeResearchBuilder:
     """Base class for Experiment Builders
     """
     def __init__(self,

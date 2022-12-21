@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 from auto_ab.splitter.params import SplitBuilderParams
 from auto_ab.splitter.split_builder import SplitBuilder
-from auto_ab.prepilot.experiment_structures import BaseSplitElement
+from auto_ab.mde_researcher._experiment_structures import BaseSplitElement
 
 
-class PrepilotSplitBuilder():
+class MultipleSplitBuilder():
     """Columns with splits and injects will be added
     """
     def __init__(self,

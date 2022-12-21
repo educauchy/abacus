@@ -1,10 +1,6 @@
-import sys
 from typing import List, Any, Dict, Optional, Callable, Union
 from pydantic import root_validator, validator
 from pydantic.dataclasses import dataclass
-import numpy as np
-# from auto_ab.auto_ab.abtest import ABTest
-# sys.path.append('..')
 from auto_ab.auto_ab.abtest import ABTest
 from fastcore.transform import Pipeline
 
@@ -12,12 +8,10 @@ from fastcore.transform import Pipeline
 class ValidationConfig:
     validate_assignment = True
     arbitrary_types_allowed = True
-    #error_msg_templates = {
-    #    'value_error.any_str.max_length': 'max_length:{limit_value}',
-    #}
+
 
 @dataclass(config=ValidationConfig)
-class PrepilotParams:
+class MdeParams:
     """Prepilot experiment parameters class.
 
     Args:

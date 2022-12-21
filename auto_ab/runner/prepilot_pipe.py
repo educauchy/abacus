@@ -6,8 +6,8 @@ import numpy as np
 import yaml
 
 from auto_ab.splitter.params import SplitBuilderParams
-from auto_ab.prepilot.params import PrepilotParams
-from auto_ab.prepilot.prepilot_experiment_builder import PrepilotExperimentBuilder
+from auto_ab.mde_researcher.params import MdeParams
+from auto_ab.mde_researcher.mde_research_builder import MdeResearchBuilder
 from auto_ab.auto_ab.abtest import ABTest
 from auto_ab.auto_ab.params import ABTestParams, DataParams, HypothesisParams
 
@@ -71,7 +71,7 @@ if __name__=="__main__":
 
     for test in POSSIBLE_TESTS:
         print(test)
-        prepilot_params = PrepilotParams(
+        prepilot_params = MdeParams(
             metrics_names=['height_now'],
             injects=[1.0006,1.0005,1.0004,1.0003],
             min_group_size=50000, 
@@ -85,7 +85,7 @@ if __name__=="__main__":
             min_beta_score=0.0,
         )
 
-        prepilot = PrepilotExperimentBuilder(df, ab_params,
+        prepilot = MdeResearchBuilder(df, ab_params,
                                         prepilot_params,
                                         split_builder_params
                                         )

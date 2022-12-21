@@ -14,13 +14,13 @@ class BaseSplitElement():
         self.target_group_size = self.group_sizes[1]
 
 @dataclass
-class PrepilotAlphaExperiment(BaseSplitElement):
+class MdeAlphaExperiment(BaseSplitElement):
     """Dataclass for I type error calculactions
     """
     metric_name: str = Field(init=False)
 
 @dataclass
-class PrepilotBetaExperiment(PrepilotAlphaExperiment):
+class MdeBetaExperiment(MdeAlphaExperiment):
     """Dataclass for II type error calculactions
     """
     inject: float = Field(init=False)

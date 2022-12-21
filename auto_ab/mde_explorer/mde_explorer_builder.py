@@ -1,7 +1,7 @@
 import pandas as pd
 from auto_ab.splitter.params import SplitBuilderParams
-from auto_ab.prepilot.prepilot_experiment_builder import PrepilotExperimentBuilder
-from auto_ab.prepilot.params import PrepilotParams
+from auto_ab.mde_researcher.mde_research_builder import MdeResearchBuilder
+from auto_ab.mde_researcher.params import MdeParams
 from auto_ab.mde_explorer.params import MdeExplorerParams
 from auto_ab.auto_ab.params import ABTestParams
 
@@ -27,7 +27,7 @@ class MdeExplorerBuilder():
         self.abtest_params = abtest_params
         self.experiment_params = experiment_params
         self.stratification_params = stratification_params
-        self._prepilot_params = PrepilotParams(
+        self._prepilot_params = MdeParams(
             metrics_names=[self.experiment_params.metric_name],
             injects=[self.experiment_params.inject],
             min_group_size=_DEFAULT_SIZE, 
@@ -51,7 +51,7 @@ class MdeExplorerBuilder():
         """
         self._prepilot_params.min_group_size = group_size
         self._prepilot_params.max_group_size = group_size
-        prepilot = PrepilotExperimentBuilder(self.guests, 
+        prepilot = MdeResearchBuilder(self.guests, 
                                         self.abtest_params,
                                         self._prepilot_params,
                                         self.stratification_params)
