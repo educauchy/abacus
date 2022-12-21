@@ -67,5 +67,5 @@ class ResplitBuilder():
                 )
                 df_strata = strata_group_values.sample(n=strata_group_count)
                 df_restrata = pd.concat([df_restrata, df_strata])
-        
+
         return df_restrata

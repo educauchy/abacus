@@ -18,6 +18,9 @@ class SplitBuilderParams:
     id_col: str = "customer_id"
     cols: List[str] = Field(default_factory=list)  # all cols for stratification
     cat_cols: List[str] = Field(default_factory=list) # this cols'll be encoded as category features
+    n_bins: int = 3
+    min_cluster_size: int = 100  # the number of top categories (by frequency) that will not be combined in 'other' categories
+    strata_outliers_frac: float = 0.01
     bin_min_size: int = 100
     n_bins_rto: int = 3
     pvalue: float = 0.05

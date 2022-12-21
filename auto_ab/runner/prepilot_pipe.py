@@ -5,13 +5,12 @@ import pandas as pd
 import numpy as np
 import yaml
 
-from auto_ab.stratification.params import SplitBuilderParams
+from auto_ab.splitter.params import SplitBuilderParams
 from auto_ab.prepilot.params import PrepilotParams
 from auto_ab.prepilot.prepilot_experiment_builder import PrepilotExperimentBuilder
-from auto_ab.prepilot.prepilot_split_builder import PrepilotSplitBuilder
 from auto_ab.auto_ab.abtest import ABTest
-from auto_ab.auto_ab.params import ABTestParams
-from auto_ab.auto_ab.params import *
+from auto_ab.auto_ab.params import ABTestParams, DataParams, HypothesisParams
+
 
 POSSIBLE_TESTS = [ABTest.test_hypothesis_boot_confint, 
                 ABTest.test_hypothesis_boot_est,
@@ -91,5 +90,3 @@ if __name__=="__main__":
                                         split_builder_params
                                         )
         beta,alpha = prepilot.collect()
-        
-                            

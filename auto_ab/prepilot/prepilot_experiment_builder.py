@@ -2,7 +2,7 @@ from typing import Union
 import itertools
 import numpy as np
 import pandas as pd
-from auto_ab.stratification.params import SplitBuilderParams
+from auto_ab.splitter.params import SplitBuilderParams
 from auto_ab.prepilot.experiment_structures import PrepilotAlphaExperiment, PrepilotBetaExperiment
 from auto_ab.prepilot.abstract_experiment_builder import AbstractExperimentBuilder
 from auto_ab.prepilot.prepilot_split_builder import PrepilotSplitBuilder
@@ -51,10 +51,11 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
         split_column = f"is_control_{grid_element.control_group_size}_{grid_element.target_group_size}_{grid_element.split_number}"
         metric_col = f"{grid_element.metric_name}"
         guests_with_splits[split_column] = (guests_with_splits[split_column]
-                                            .map({1: 'A', 0: 'B'})
+                                            .map({1: self.abtest_params.data_params.treatment_name, 
+                                                  0: self.abtest_params.data_params.control_name})
         )
         if isinstance(grid_element, PrepilotBetaExperiment):
-            guests_with_splits[metric_col].where(guests_with_splits[split_column]=='A', #applied where cond is False
+            guests_with_splits[metric_col].where(guests_with_splits[split_column]==self.abtest_params.data_params.control_name,
                                                  guests_with_splits[metric_col]*grid_element.inject, 
                                                  axis=0,
                                                  inplace=True)
@@ -270,9 +271,6 @@ class PrepilotExperimentBuilder(AbstractExperimentBuilder):
                                       values="alpha",
                                       index=["metric"],
                                       columns="split_rate")
-                       #.style.background_gradient(cmap="YlGn",
-                       #                           vmin=0,
-                       #                           vmax=1.0)
                     )
         return res_pivoted
 

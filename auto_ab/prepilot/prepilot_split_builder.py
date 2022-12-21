@@ -3,8 +3,8 @@ import copy
 import itertools
 import numpy as np
 import pandas as pd
-from auto_ab.stratification.params import SplitBuilderParams
-from auto_ab.stratification.split_builder import StratificationSplitBuilder
+from auto_ab.splitter.params import SplitBuilderParams
+from auto_ab.splitter.split_builder import SplitBuilder
 from auto_ab.prepilot.experiment_structures import BaseSplitElement
 
 
@@ -35,7 +35,7 @@ class PrepilotSplitBuilder():
         self.group_sizes = group_sizes
         self.stratification_params = copy.deepcopy(stratification_params)
         self.split_grid = self._build_splits_grid()
-        self.split_builder = StratificationSplitBuilder(self.guests, self.stratification_params)
+        self.split_builder = SplitBuilder(self.guests, self.stratification_params)
 
     def _build_splits_grid(self):
         return list(BaseSplitElement(el[0], el[1])
@@ -121,11 +121,3 @@ class PrepilotSplitBuilder():
                                           how="inner"))
         del experiment_guests
         return guests_data_with_strata
-
-    #def collect(self) -> pd.DataFrame:
-    #    """Builds dataframe with data for prepilot experiments
-#
-#        Returns: pandas DataFrame with columns for splits and injected metrics
-#        """
-#        prepilot_df = self.multliple_split()
-#        return prepilot_df

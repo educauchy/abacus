@@ -1,5 +1,5 @@
 import pandas as pd
-from auto_ab.stratification.params import SplitBuilderParams
+from auto_ab.splitter.params import SplitBuilderParams
 from auto_ab.prepilot.prepilot_experiment_builder import PrepilotExperimentBuilder
 from auto_ab.prepilot.params import PrepilotParams
 from auto_ab.mde_explorer.params import MdeExplorerParams
