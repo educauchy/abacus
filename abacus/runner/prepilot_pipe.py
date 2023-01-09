@@ -1,10 +1,5 @@
-import os
-import sys
-import logging
 import pandas as pd
 import numpy as np
-import yaml
-
 from abacus.splitter.params import SplitBuilderParams
 from abacus.mde_researcher.params import MdeParams
 from abacus.mde_researcher.mde_research_builder import MdeResearchBuilder
@@ -25,13 +20,7 @@ POSSIBLE_TESTS = [ABTest.test_hypothesis_boot_confint,
 
 if __name__=="__main__":
 
-    df = pd.read_csv('./notebooks/ab_data.csv')
-
-    with open("./auto_ab/configs/auto_ab.config.yaml", "r") as stream:
-        try:
-            ab_config = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
+    df = pd.read_csv('../../examples/data/ab_data.csv')
     
     df["moda_city"] = np.random.randint(1, 5, df.shape[0])
     df["moda_city"] = df["moda_city"].astype(str)
@@ -42,10 +31,41 @@ if __name__=="__main__":
     df["denominator"] = np.random.randint(1, 5, df.shape[0])
     df["country"] = np.random.randint(1, 3, df.shape[0])
 
-    data_params = DataParams(**ab_config['data_params'])
-    hypothesis_params = HypothesisParams(**ab_config['hypothesis_params'])
+    data_params = DataParams(
+        id_col='id', 
+        group_col='groups',
+        control_name='control',
+        treatment_name='target',
+        strata_col='country', 
+        target='height_now', 
+        target_flg='bought', 
+        predictors=['weight_now'], 
+        numerator='clicks', 
+        denominator='sessions', 
+        covariate='height_prev', 
+        target_prev='height_prev', 
+        predictors_prev=['weight_prev'], 
+        cluster_col='kl-divergence', 
+        clustering_cols=['col1', 'col2', 'col3'], 
+        is_grouped=True
+    )
 
-    ab_params = ABTestParams(data_params,hypothesis_params)
+    hypothesis_params = HypothesisParams(
+        alpha=0.05, 
+        beta=0.2, 
+        alternative='two-sided', 
+        split_ratios=(0.5, 0.5), 
+        strategy='simple_test', 
+        strata='country', 
+        strata_weights={'US': 0.8, 'UK': 0.2}, 
+        metric_type='solid', 
+        metric_name='mean', 
+        metric=np.mean, 
+        n_boot_samples=2, 
+        n_buckets=50
+    )
+
+    ab_params = ABTestParams(data_params, hypothesis_params)
 
     ab_params = ABTestParams()
     ab_params.data_params.numerator = 'numerator'
@@ -56,24 +76,21 @@ if __name__=="__main__":
             'control': None,
             'target': None
         },
-        region_col = "moda_city",
+        main_strata_col = "moda_city",
         split_metric_col = "height_now",
-        customer_col = "id",
-        cols = [],
-        cat_cols=[
-        ],
+        id_col = "id",
+        cols = ["height_prev"],
+        cat_cols=["country"],
         pvalue=0.05,
-        n_top_cat=100,
-        stat_test="ttest_ind"
+        n_bins = 6,
+        min_cluster_size = 500
     )
-
-    ab_params.hypothesis_params.n_boot_samples = 2
 
     for test in POSSIBLE_TESTS:
         print(test)
         prepilot_params = MdeParams(
             metrics_names=['height_now'],
-            injects=[1.0006,1.0005,1.0004,1.0003],
+            injects=[1.0001,1.0002,1.0003],
             min_group_size=50000, 
             max_group_size=52000, 
             step=10000,
