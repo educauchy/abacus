@@ -1,9 +1,9 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="ab_tools",
-    version="0.1.0",
-    description="A/B tools",
+    name="ABacus",
+    version="0.0.1",
+    description="A/B experimentation tools",
     packages=find_packages(),
     include_package_data=True,
     install_requires=["hdbscan == 0.8.28","statsmodels == 0.13.2","tqdm == 4.62.3",
