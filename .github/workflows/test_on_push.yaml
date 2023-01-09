@@ -10,7 +10,7 @@ on:
     branches:
       - 'main' 
 env:
-  DEVOPS_DIR: auto_ab/runner
+  DEVOPS_DIR: abacus/runner
 
 jobs:
   run_tests:
