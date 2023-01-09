@@ -149,7 +149,7 @@ class ABTest:
         return result
 
     def _linearize(self) -> None:
-            X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['A']]
+            X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
             K = round(sum(X[self.params.data_params.numerator]) / sum(X[self.params.data_params.denominator]), 4)
 
             self.__dataset.loc[:, f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"] = \
@@ -209,8 +209,8 @@ class ABTest:
             Test result: 1 - significant different, 0 - insignificant difference
         """
         if X is None and Y is None:
-            X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['A']]
-            Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['B']]
+            X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+            Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
         a_metric_total = sum(X[self.params.data_params.numerator]) / sum(X[self.params.data_params.denominator])
         b_metric_total = sum(Y[self.params.data_params.numerator]) / sum(Y[self.params.data_params.denominator])
@@ -266,8 +266,8 @@ class ABTest:
             Dictionary with following properties: test statistic, p-value, test result
             Test result: 1 - significant different, 0 - insignificant difference
         """
-        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['A']]
-        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['B']]
+        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
         A_mean, A_var = self._taylor_params(X)
         B_mean, B_var = self._taylor_params(Y)
@@ -282,8 +282,8 @@ class ABTest:
             Dictionary with following properties: test statistic, p-value, test result
             Test result: 1 - significant different, 0 - insignificant difference
         """
-        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['A']]
-        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['B']]
+        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
         A_mean, A_var = self._delta_params(X)
         B_mean, B_var = self._delta_params(Y)
@@ -462,8 +462,8 @@ class ABTest:
             Test result: 1 - significant different, 0 - insignificant difference
         """
         metric_diffs: List[float] = []
-        X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['A']]
-        Y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.group_map['B']]
+        X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        Y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
         for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_strata_metric = 0

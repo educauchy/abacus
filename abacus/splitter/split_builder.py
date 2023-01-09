@@ -35,10 +35,10 @@ class SplitBuilder:
         feature:
 
         first feature (_encoded): there are two cases:
-            (1) If the number of unique values of feature more than the value "n_top_cat" from config,
+            (1) If the number of unique values of feature more than the value "min_cluster_size" from config,
                 then values with low frequency will be combined into one ("other" with code DEFAULT_CAT_VALUE).
-                After encoding feature will contain (n_top_cat + 1) unique values.
-            (2) If the number of unique values of feature less than the value "n_top_cat" from config,
+                After encoding feature will contain (min_cluster_size + 1) unique values.
+            (2) If the number of unique values of feature less than the value "min_cluster_size" from config,
                 the new column will be the same as the original.
 
         second feature (_freq): frequency with noise of the encoded feature
@@ -49,14 +49,14 @@ class SplitBuilder:
         df_cat = df.copy()
         for col in self.params.cat_cols:
             counts = df[col].value_counts()
-            counts.iloc[:self.params.n_top_cat] = (
-                counts.iloc[:self.params.n_top_cat] 
+            counts.iloc[:self.params.min_cluster_size] = (
+                counts.iloc[:self.params.min_cluster_size] 
                 + 0.1 * (np.random.uniform(low=0., 
                                             high=1., 
-                                            size=len(counts.iloc[:self.params.n_top_cat])) 
+                                            size=len(counts.iloc[:self.params.min_cluster_size])) 
                         )
             )
-            counts.iloc[self.params.n_top_cat:] = sys.maxsize
+            counts.iloc[self.params.min_cluster_size:] = sys.maxsize
             counts = counts.to_dict()
             df_cat[col] = (df_cat[col]
                           .map(lambda x, counts=counts: counts[x] / self.split_data.shape[0])
