@@ -20,7 +20,7 @@ POSSIBLE_TESTS = [ABTest.test_hypothesis_boot_confint,
 
 if __name__=="__main__":
 
-    df = pd.read_csv('../../examples/data/ab_data.csv')
+    df = pd.read_csv('examples/data/ab_data.csv')
     
     df["moda_city"] = np.random.randint(1, 5, df.shape[0])
     df["moda_city"] = df["moda_city"].astype(str)
