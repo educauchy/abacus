@@ -6,8 +6,11 @@ on:
       - '!refs/tags/*'
     branches:
       - 'main'
+  pull_request:
+    branches:
+      - 'main' 
 env:
-  DEVOPS_DIR: auto_ab/runner
+  DEVOPS_DIR: abacus/runner
 
 jobs:
   run_tests:
@@ -16,8 +19,10 @@ jobs:
       - uses: actions/checkout@master
       - uses: actions/setup-python@v1
         with:
-          python-version: '3.8.14'
+          python-version: '3.9.16'
           architecture: 'x64'
+      - name: Update joblib
+        run: pip install joblib==1.1.0
       - name: Install cython
         run: pip install cython==0.29.24
       - name: Install Jinja
