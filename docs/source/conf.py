@@ -35,10 +35,10 @@ limitations under the License.
 author = "Glowbyte. Advanced Analytics team"
 
 # The full version, including alpha/beta/rc tags
-from abacus import __version__  # noqa
-
-release = __version__
-version = __version__
+# from abacus import __version__  # noqa
+#
+# release = __version__
+# version = __version__
 
 # -- General configuration ---------------------------------------------------
 
