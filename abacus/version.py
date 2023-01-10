@@ -15,8 +15,7 @@
 """
 __version__ parameter required to be able to output to the console
 """
-from pathlib import Path
+with open('abacus/VERSION', 'r') as version:
+    VERSION_FILE = version.read()
 
-VERSION_FILE = Path(__file__).parent / "VERSION"
-
-__version__ = VERSION_FILE.read_text().strip()
+__version__ = VERSION_FILE.strip()
