@@ -1,34 +1,48 @@
 Usage
 =====
 
-.. _installation:
+.. install
 
 Installation
 ------------
 
-To use Lumache, first install it using pip:
+Stable version is released on every tag to ``main`` branch.
 
-.. code-block:: console
+.. code:: bash
 
-   (.venv) $ pip install lumache
+    pip install abacus
 
-Creating recipes
-----------------
+**Note**: Abacus requires Python 3.7+.
 
-To retrieve a list of random ingredients,
-you can use the ``lumache.get_random_ingredients()`` function:
 
-.. autofunction:: lumache.get_random_ingredients
+.. prepilot
 
-The ``kind`` parameter should be either ``"meat"``, ``"fish"``,
-or ``"veggies"``. Otherwise, :py:func:`lumache.get_random_ingredients`
-will raise an exception.
+Prepilot
+--------
 
-.. autoexception:: lumache.InvalidKindError
+The main goal of prepilot usage is to simulate real experiment
+and to choose necessary parameters of experiment, e.g. type I/II errors,
+sample size, effect size.
 
-For example:
 
->>> import lumache
->>> lumache.get_random_ingredients()
-['shells', 'gorgonzola', 'parsley']
+.. evaluation
 
+Experiment evaluation
+--------
+
+**ABacus** supports different types of metrics: continuous, binary, and ratio.
+
+
+
+.. sensitivity
+
+Increasing Sensitivity
+--------
+
+There are numerous methods for increasing sensitivity:
+
+* Outliers removal
+* Post-stratification
+* CUPED
+* CUPAC
+* etc
