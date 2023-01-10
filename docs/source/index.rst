@@ -52,6 +52,23 @@ Usage
     evaluation
     sensitivity
 
+
+.. technical
+
+.. toctree::
+
+    :maxdepth: 1
+    :caption: Technical docs
+    :name: tech-docs
+
+    auto_ab
+    mde_researcher
+    resplitter
+    runner
+    splitter
+
+
+
 .. documentation
 
 Examples
