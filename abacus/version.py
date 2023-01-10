@@ -15,7 +15,7 @@
 """
 __version__ parameter required to be able to output to the console
 """
-with open('abacus/VERSION', 'r') as version:
+with open('VERSION', 'r') as version:
     VERSION_FILE = version.read()
 
 __version__ = VERSION_FILE.strip()
