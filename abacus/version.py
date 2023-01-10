@@ -13,20 +13,10 @@
 #  limitations under the License.
 
 """
-ABacus
-===============================
-ABacus is a Python library developed for A/B experimentation and testing.
-It includes versatile instruments for different experimentation tasks like
-prepilot, sample size determination, results calculation.
-See "https://abacus.readthedocs.io" for complete documentation.
-
-Subpackages: TODO
-------------
-    auto_ab -
-    mde_researcher -
-    resplitter -
-    runner -
-    splitter -
+__version__ parameter required to be able to output to the console
 """
+from pathlib import Path
 
-from abacus.version import __version__
+VERSION_FILE = Path(__file__).parent / "VERSION"
+
+__version__ = VERSION_FILE.read_text().strip()
