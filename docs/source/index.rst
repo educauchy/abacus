@@ -1,5 +1,6 @@
+================================
 Welcome to ABacus documentation!
-========
+================================
 
 .. shields start
 |PyPI| |PyPI License| |ReadTheDocs|
@@ -10,7 +11,6 @@ Welcome to ABacus documentation!
     :target: https://github.com/educauchy/abacus/blob/main/LICENSE
 .. |ReadTheDocs| image:: https://img.shields.io/readthedocs/abacus.svg
     :target: https://abacus.readthedocs.io
-
 .. shields end
 
 .. image:: https://raw.githubusercontent.com/educauchy/abacus/main/docs/source/_static/abacus.png
@@ -18,9 +18,11 @@ Welcome to ABacus documentation!
    :width: 320 px
    :align: center
 
+
 **ABacus** is a Python library developed for A/B experimentation and testing.
 It includes versatile instruments for different experimentation tasks like
 prepilot, sample size determination, results calculation.
+
 
 .. functional
 
@@ -37,18 +39,6 @@ Important features
 
    This project is under active development.
 
-.. install
-
-Installation
-------------
-
-Stable version is released on every tag to ``main`` branch.
-
-.. code:: bash
-
-    pip install abacus
-
-**Abacus requires Python 3.7+.**
 
 .. usage
 
@@ -57,8 +47,10 @@ Usage
 
 .. toctree::
 
+    install
     prepilot
     evaluation
+    sensitivity
 
 .. documentation
 
