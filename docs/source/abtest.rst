@@ -1,7 +1,7 @@
 ABTest
 ======
 
-.. currentmodule:: abacus.auto_ab.abtest
+.. currentmodule:: abacus.auto_ab
 
 .. autosummary::
     :toctree: _autosummary
@@ -22,7 +22,7 @@ ABTest
     test_boot_hypothesis
     bucketing
 
-.. autoclass:: abacus.auto_ab.abtest.ABTest
+.. autoclass:: abacus.auto_ab.ABTest
     :members: run
 
-.. autofunction:: abacus.auto_ab.abtest.test_hypothesis_ttest
+.. autofunction:: abacus.auto_ab.ABTest.test_hypothesis_ttest
