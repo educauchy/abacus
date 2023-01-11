@@ -1,5 +1,5 @@
 ABTest
-==========
+======
 
 .. currentmodule:: abacus.abtest
 

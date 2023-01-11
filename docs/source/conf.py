@@ -37,11 +37,15 @@ author = "Glowbyte. Advanced Analytics team"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.duration',
-    'sphinx.ext.doctest',
+    'readthedocs_ext.readthedocs',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
+    'sphinx.ext.duration',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.todo',
+    'sphinx.ext.viewcode',
+    'sphinx_toolbox.more_autodoc',
     'numpydoc',
     'sphinx_rtd_theme'
 ]
