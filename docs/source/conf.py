@@ -44,7 +44,6 @@ extensions = [
     'sphinx.ext.duration',
     'sphinx.ext.todo',
     'sphinx.ext.viewcode',
-    'sphinx_toolbox.more_autodoc',
     'numpydoc',
     'sphinx_rtd_theme'
 ]
