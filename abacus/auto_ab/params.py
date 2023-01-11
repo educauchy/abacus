@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Tuple, Any, Callable, Union, Dict
+from typing import List, Tuple, Any, Callable, Union
 from pydantic.dataclasses import dataclass
 from pydantic import validator, Field
 import numpy as np

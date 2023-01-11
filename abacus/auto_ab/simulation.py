@@ -1,9 +1,9 @@
+from typing import Optional, Dict, Tuple, List, Any, Callable, Union
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import ttest_ind
-from typing import Optional, Dict, Tuple, List, Any, Callable, Union
 from collections import defaultdict
 from hyperopt import hp, fmin, tpe, Trials, space_eval
 

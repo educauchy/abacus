@@ -1,6 +1,5 @@
-import numpy as np
-import pandas as pd
 from typing import Optional, List
+import pandas as pd
 import statsmodels.api as sm
 from category_encoders.target_encoder import TargetEncoder
 
