@@ -5,7 +5,6 @@ ABTest
 
 .. autosummary::
     :toctree: _autosummary
-    :nosignatures:
 
     ABTest
     ratio_bootstrap
