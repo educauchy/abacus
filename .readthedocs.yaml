@@ -6,7 +6,7 @@ build:
   tools:
     python: "3.7"
   jobs:
-    post_intall:
+    post_install:
       - pip install --no-cache-dir -r requirements.txt
 
 sphinx:
