@@ -29,4 +29,4 @@ Subpackages: TODO
     splitter -
 """
 
-from abacus.version import __version__
+# from abacus.version import __version__
