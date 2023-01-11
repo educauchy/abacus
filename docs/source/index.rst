@@ -36,17 +36,12 @@ Important features
 
    This project is under active development.
 
-
 .. toctree::
     :maxdepth: 1
     :caption: Usage
     :name: usage
 
-    install
-    prepilot
-    evaluation
-    sensitivity
-
+    usage
 
 .. toctree::
     :maxdepth: 1
@@ -54,11 +49,6 @@ Important features
     :name: technical
 
     auto_ab
-    mde_researcher
-    resplitter
-    runner
-    splitter
-
 
 Examples
 -------------
