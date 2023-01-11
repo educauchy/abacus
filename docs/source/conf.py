@@ -72,3 +72,6 @@ html_theme_options = {"display_version": True, "logo_only": True}
 html_static_path = ["_static"]
 html_css_files = ["css/style.css"]
 html_logo = "_static/abacus.png"
+
+# Custome
+autosummary_generate = True

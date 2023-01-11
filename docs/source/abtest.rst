@@ -4,6 +4,7 @@ ABTest
 .. currentmodule:: abacus.abtest
 
 .. autosummary::
+    :toctree: _autosummary
     :nosignatures:
 
     ABTest
