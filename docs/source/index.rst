@@ -45,7 +45,7 @@ Important features
 
 .. toctree::
     :maxdepth: 1
-    :caption: Technical
+    :caption: 'Technical docs'
     :name: mastertoc
 
     abtest
