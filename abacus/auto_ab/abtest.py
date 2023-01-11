@@ -102,7 +102,7 @@ class ABTest:
         if self.params.hypothesis_params.metric_type == 'solid':
             group = X.loc[X[self.params.data_params.group_col] == group_label, \
                             self.params.data_params.target].to_numpy()
-        elif self.params.hypothesis_params.metric_type == 'solid':
+        elif self.params.hypothesis_params.metric_type == 'binary':
             group = X.loc[X[self.params.data_params.group_col] == group_label, \
                             self.params.data_params.target_flg].to_numpy()
         return group

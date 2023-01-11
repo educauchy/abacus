@@ -38,8 +38,8 @@ class Graphics:
             params: Parameters of the experiment
         """
         bins = 100
-        a_median = np.mean(params.data_params.control)
-        b_median = np.mean(params.data_params.treatment)
+        a_median = np.median(params.data_params.control)
+        b_median = np.median(params.data_params.treatment)
         threshold = np.quantile(params.data_params.control, 0.975)
         fig, ax = plt.subplots(figsize=(20, 12))
         ax.hist(params.data_params.control, bins, alpha=0.5, label='Control', color='Red')
