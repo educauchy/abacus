@@ -21,3 +21,5 @@
 
 .. autoclass:: abacus.auto_ab.ABTest
     :members: run
+
+.. autofunction:: abacus.auto_ab.test_hypothesis_ttest
