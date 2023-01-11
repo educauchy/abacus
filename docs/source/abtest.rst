@@ -1,4 +1,7 @@
-.. currentmodule:: abacus.auto_ab
+ABTest
+==========
+
+.. currentmodule:: abacus.abtest
 
 .. autosummary::
     :nosignatures:

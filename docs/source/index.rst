@@ -45,10 +45,10 @@ Important features
 
 .. toctree::
     :maxdepth: 1
-    :caption: Technical docs
-    :name: technical
+    :caption: Technical
+    :name: mastertoc
 
-    auto_ab
+    abtest
 
 Examples
 -------------
