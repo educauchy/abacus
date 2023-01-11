@@ -24,7 +24,7 @@ prepilot, sample size determination, results calculation.
 
 
 Important features
------------------
+------------------
 
 * Prepilot design: type I/II errors, effect size, sample size simulations
 * Groups splitting
@@ -51,7 +51,7 @@ Important features
     abtest
 
 Examples
--------------
+--------
 
 For more details, see the `examples <https://github.com/educauchy/abacus/tree/main/examples>`_.
 
