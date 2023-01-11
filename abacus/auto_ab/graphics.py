@@ -92,29 +92,3 @@ class Graphics:
         ax.vlines([ci_left, ci_right], ymin=0, ymax=100, linestyle='--', label='Confidence interval')
         ax.legend()
         plt.show()
-
-if __name__ == '__main__':
-    with open("./configs/auto_ab.config.yaml", "r") as stream:
-        try:
-            ab_config = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
-
-    data_params = DataParams(**ab_config['data_params'])
-    hypothesis_params = HypothesisParams(**ab_config['hypothesis_params'])
-
-    ab_params = ABTestParams(data_params,
-                             hypothesis_params)
-
-    dots = 10_000
-    boot_samples = 5000
-    a = np.random.normal(0, 4, dots)
-    b = np.random.normal(1, 6, dots)
-    gr = Graphics()
-
-    metric_diffs: List[float] = []
-    for _ in range(boot_samples):
-        x_boot = np.random.choice(a, size=a.shape[0], replace=True)
-        y_boot = np.random.choice(b, size=b.shape[0], replace=True)
-        metric_diffs.append(np.mean(y_boot) - np.mean(x_boot))
-    gr.plot_bootstrap_confint(metric_diffs, ab_params)

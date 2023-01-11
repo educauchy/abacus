@@ -263,12 +263,3 @@ class Simulation:
         alpha: float = (1 - self.config['alpha'] / 2) if self.config['alternative'] == 'two-sided' else (1 - self.config['alpha'])
         mde: float = np.sqrt( 2 * (t.ppf(alpha) + t.ppf(1 - self.config['beta'])) * std / n_samples )
         return mde
-
-
-if __name__ == '__main__':
-    stds = list(range(10, 30, 10))
-    effect_sizes = list(range(10, 30, 10))
-    sample_sizes = list(range(100, 300, 100))
-    Simulation(stds=stds,
-               effect_sizes=effect_sizes,
-               sample_sizes=sample_sizes).sample_size_simulation()

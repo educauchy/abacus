@@ -693,23 +693,3 @@ class ABTest:
         new_dataset = resplitter.collect()
 
         return ABTest(new_dataset, self.params)
-
-
-
-if __name__ == '__main__':
-    with open("./configs/auto_ab.config.yaml", "r") as stream:
-        try:
-            ab_config = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
-
-    data_params = DataParams(**ab_config['data_params'])
-    hypothesis_params = HypothesisParams(**ab_config['hypothesis_params'])
-
-    ab_params = ABTestParams(data_params,
-                             hypothesis_params)
-
-    df = pd.read_csv('../notebooks/ab_data.csv')
-
-    ab_obj = ABTest(df, ab_params)
-    ab_obj.test_hypothesis_boot_est()

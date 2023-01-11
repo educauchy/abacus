@@ -49,9 +49,3 @@ class ParallelExperiments:
 
         self.dataset.loc[:, 'bucket_id'] = bucket_ids
         self.dataset = self.dataset.astype({'bucket_id': 'int32'})
-
-
-if __name__ == '__main__':
-    user_ids = np.random.randint(1, 10**10, 100_000)
-    pe = ParallelExperiments(method='modulo')
-    pe.fit(user_ids)

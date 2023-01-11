@@ -185,32 +185,3 @@ class Splitter:
             DataFrame with additional 'group' column
         """
         return self.splitter(self.config['split_rate'])
-
-if __name__ == '__main__':
-    # Test hash function
-    X = pd.DataFrame({
-        'id': range(0, 20000)
-    })
-    sp = Splitter()
-    X_new = sp.create_level(X, 'id', 5, 200)
-    level = X_new['bucket_id']
-    pprint.pprint(Counter(level))
-
-    # Test splitter
-    X = pd.DataFrame({
-        'sex': ['f' for _ in range(14)] + ['m' for _ in range(6)],
-        'married': ['yes' for _ in range(5)] + ['no' for _ in range(9)] + ['yes' for _ in range(4)] + ['no', 'no'],
-        'country': [np.random.choice(['UK', 'US'], 1)[0] for _ in range(20)],
-    })
-    conf = ['sex', 'married']
-    stratify_by = ['country']
-    X_out = Splitter().fit()
-
-
-    df = pd.read_csv('../../examples/storage/data/ab_data.csv')
-
-    with open("../../config.yaml", "r") as stream:
-        try:
-            config = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)

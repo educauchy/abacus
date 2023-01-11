@@ -87,27 +87,3 @@ class VarianceReduction:
             X.loc[X[groups] == group, target] = group_y_cuped
 
         return X
-
-if __name__ == '__main__':
-    df = pd.read_csv('../notebooks/ab_data.csv')
-
-    vr = VarianceReduction()
-    # ans = vr.cupac(df, target_prev='height_prev', target_now='height_now',
-    #                factors_prev=['weight_prev'],
-    #                factors_now=['weight_now'], groups='groups')
-    ans = vr.cuped(df, target='height_now', groups='groups', covariate='height_prev')
-
-    target_var = 'height_now'
-    target_cuped = 'height_now'
-
-    print('\nMeans')
-    print(df.loc[df.groups == 'A', target_var].mean())
-    print(df.loc[df.groups == 'B', target_var].mean())
-    print(ans.loc[ans.groups == 'A', target_cuped].mean())
-    print(ans.loc[ans.groups == 'B', target_cuped].mean())
-
-    print('\nVars')
-    print(df.loc[df.groups == 'A', target_var].var())
-    print(df.loc[df.groups == 'B', target_var].var())
-    print(ans.loc[ans.groups == 'A', target_cuped].var())
-    print(ans.loc[ans.groups == 'B', target_cuped].var())
