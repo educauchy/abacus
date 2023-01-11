@@ -1,4 +1,3 @@
-================================
 Welcome to ABacus documentation!
 ================================
 
@@ -24,8 +23,6 @@ It includes versatile instruments for different experimentation tasks like
 prepilot, sample size determination, results calculation.
 
 
-.. functional
-
 Important features
 -----------------
 
@@ -40,12 +37,10 @@ Important features
    This project is under active development.
 
 
-.. usage
-
-Usage
------
-
 .. toctree::
+    :maxdepth: 1
+    :caption: Usage
+    :name: usage
 
     install
     prepilot
@@ -53,13 +48,10 @@ Usage
     sensitivity
 
 
-.. technical
-
 .. toctree::
-
     :maxdepth: 1
     :caption: Technical docs
-    :name: tech-docs
+    :name: technical
 
     auto_ab
     mde_researcher
@@ -68,15 +60,11 @@ Usage
     splitter
 
 
-
-.. documentation
-
 Examples
 -------------
 
 For more details, see the `examples <https://github.com/educauchy/abacus/tree/main/examples>`_.
 
-.. contributors
 
 Communication
 -------------

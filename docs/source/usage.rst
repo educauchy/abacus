@@ -1,8 +1,6 @@
 Usage
 =====
 
-.. install
-
 Installation
 ------------
 
@@ -15,8 +13,6 @@ Stable version is released on every tag to ``main`` branch.
 **Note**: Abacus requires Python 3.7+.
 
 
-.. prepilot
-
 Prepilot
 --------
 
@@ -25,16 +21,11 @@ and to choose necessary parameters of experiment, e.g. type I/II errors,
 sample size, effect size.
 
 
-.. evaluation
-
 Experiment evaluation
 --------
 
 **ABacus** supports different types of metrics: continuous, binary, and ratio.
 
-
-
-.. sensitivity
 
 Increasing Sensitivity
 --------
