@@ -15,18 +15,18 @@ class MdeParams:
     """Prepilot experiment parameters class.
 
     Args:
-        metrics_names: metrics which will be compare in experiments.
-        injects: injects represent MDE values.
-        min_group_size: minimal value of groups sizes.
-        max_group_size: maximal value of groups sizes.
+        metrics_names: Metrics which will be compare in experiments.
+        injects: Injects represent MDE values.
+        min_group_size: Minimal value of groups sizes.
+        max_group_size: Maximal value of groups sizes.
         step: Spacing between min_group_size and max_group_size.
         variance_reduction: ABTest methods for variance reduction.
-        use_buckets: use bucketize method.
-        transformations: pipeline of experiment. Will be calulted in __post_init__.
-        stat_test: statistical test type.
-        iterations_number: count of splits for each element in group_sizes.
-        max_beta_score: max level of II type error.
-        min_beta_score: min level of II type error.
+        use_buckets: Use bucketize method.
+        transformations: Pipeline of experiment. Will be calulted in __post_init__.
+        stat_test: Statistical test type.
+        iterations_number: Count of splits for each element in group_sizes.
+        max_beta_score: Maximum level of II type error.
+        min_beta_score: Minimum level of II type error.
     """
     metrics_names: List[str]
     injects: List[float]

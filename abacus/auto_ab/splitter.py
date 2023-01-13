@@ -48,9 +48,7 @@ class Splitter:
         """ Add 'group' column
 
         Args:
-            split_rate: Split rate of control/treatment
-        Returns:
-            None
+            split_rate (float): Split rate of control/treatment
         """
         split_rate: float = self.params.splitter_params.split_rate if split_rate is None else split_rate
         self.dataset = self.config['splitter'].fit(self.dataset,
@@ -59,14 +57,14 @@ class Splitter:
                                                    self.params.data_params.denominator,
                                                    split_rate)
 
-    def __default_splitter(self, split_rate: float = 0.5) -> pd.DataFrame:
+    def __default_splitter(self, split_rate: float=0.5) -> pd.DataFrame:
         """Performs split into A and B using default splitter
 
         Args:
-            split_rate: Share of control group
+            split_rate (float): Share of control group
 
         Returns:
-            Initial dataframe with additional 'group_col'
+            pandas.DataFrame: Initial dataframe with additional 'group_col'
         """
         A_data, B_data = train_test_split(self.dataset, train_size=split_rate, random_state=0)
         A_data.loc[:, self.config['group_col']] = 'A'
@@ -82,14 +80,14 @@ class Splitter:
         kmeans.fit(X)
         self.dataset.loc[self.config['cluster_col']] = kmeans.predict(X)
 
-    def __kl_divergence(self, n_bins: int = 50) -> Tuple[float, float]:
+    def __kl_divergence(self, n_bins: int=50) -> Tuple[float, float]:
         """ Kullback-Leibler divergence for two arrays of cluster ids for A/A test
 
         Args:
-            n_bins: Number of clusters
+            n_bins (int): Number of clusters
 
         Returns:
-            Kullback-Leibler divergence a to b and b to a
+            Tuple[float, float]: Kullback-Leibler divergence a to b and b to a
         """
         a = self.dataset.loc[self.dataset[self.config['group_col'] == 'A'], self.config['cluster_col']].tolist()
         b = self.dataset.loc[self.dataset[self.config['group_col'] == 'B'], self.config['cluster_col']].tolist()
@@ -103,15 +101,10 @@ class Splitter:
 
         return (ent_ab, ent_ba)
 
-    def __model_classify(self, X: pd.DataFrame = None, target: np.array = None) -> float:
+    def __model_classify(self) -> float:
         """ Classification model for A/A test
-
-        Args:
-            X: Dataset to classify
-            target: Target for model
-
         Returns:
-            ROC-AUC score for model
+            float: ROC-AUC score for model
         """
         X = self.dataset[self.config['clustering_cols']]
         target = self.config['target']
@@ -126,10 +119,10 @@ class Splitter:
         """ Perform A/A test
 
         Args:
-            n_iter: Number of iterations
+            n_iter (int): Number of iterations.
 
         Returns:
-            Actual alpha; Share of iterations when control and treatment groups are equal
+            float: Actual alpha (= share of iterations when control and treatment groups are equal).
         """
         result: int = 0
         for it in range(n_iter):
@@ -173,10 +166,6 @@ class Splitter:
 
     def fit(self) -> None:
         """ Split DataFrame and add group column based on splitting
-
-        Args:
-            X: Pandas DataFrame to split
-            split_rate: Split rate of control to treatment
 
         Returns:
             DataFrame with additional 'group' column

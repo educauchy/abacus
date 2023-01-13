@@ -1,7 +1,9 @@
+from typing import List, Union
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from abacus.auto_ab.params import *
+from abacus.auto_ab.params import ABTestParams
 
 
 class Graphics:
@@ -13,7 +15,7 @@ class Graphics:
         """Plot log of simulation matrix
 
         Args:
-            log_path: Path to log file in .csv format
+            log_path (str): Path to log file in .csv format.
         """
         df = pd.read_csv(log_path)
         df_pivot = df.pivot(index='split_rate', columns='increment', values='pval_sign_share')
@@ -24,11 +26,11 @@ class Graphics:
         plt.close()
 
     @staticmethod
-    def plot_median_experiment(params: ABTestParams = ABTestParams()) -> None:
+    def plot_median_experiment(params: ABTestParams) -> None:
         """Plot distributions of medians in experiment groups
 
         Args:
-            params: Parameters of the experiment
+            params (ABTestParams): Parameters of the experiment.
         """
         bins = 100
         a_median = np.median(params.data_params.control)
@@ -45,11 +47,11 @@ class Graphics:
         plt.close()
 
     @staticmethod
-    def plot_mean_experiment(params: ABTestParams = ABTestParams()) -> None:
+    def plot_mean_experiment(params: ABTestParams) -> None:
         """Plot distributions of means in experiment groups
 
         Args:
-            params: Parameters of the experiment
+            params (ABTestParams): Parameters of the experiment.
         """
         bins = 100
         a_mean = np.mean(params.data_params.control)
@@ -68,13 +70,13 @@ class Graphics:
         plt.close()
 
     @staticmethod
-    def plot_bootstrap_confint(X: Union[np.array, List[Union[int, float]]] = None,
-                               params: ABTestParams = ABTestParams()) -> None:
+    def plot_bootstrap_confint(X: np.array,
+                               params: ABTestParams) -> None:
         """Plot bootstrap metric of experiment with its confidence interval
 
         Args:
-            X: Bootstrap metric
-            params: Parameters of the experiment
+            X (np.array): Bootstrap metric.
+            params (ABTestParams): Parameters of the experiment.
         """
         bins = 100
         ci_left, ci_right = np.quantile(X, params.hypothesis_params.alpha / 2), \

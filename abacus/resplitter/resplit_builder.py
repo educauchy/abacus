@@ -6,22 +6,21 @@ class ResplitBuilder():
     def __init__(self,
                  df: pd.DataFrame,
                  resplit_params: ResplitParams):
-        """_summary_
+        """TODO: _summary_
 
         Args:
-            df: DataFrame for rebuild split
-            resplit_params: params for resplit
+            df (pandas.DataFrame): DataFrame for rebuild split.
+            resplit_params (ResplitParams): Params for resplit.
         """
         self.df = df
         self.params = resplit_params
         self._len_df = len(df)
 
-
     def collect(self) -> pd.DataFrame:
-        """Method recalculate fractions of each strata in dataframe
+        """Method recalculate fractions of each strata in dataframe.
 
         Returns:
-            DataFrame witt recalculated strata fractions
+            pandas.DataFrame: DataFrame with recalculated strata fractions.
         """
         df_restrata = pd.DataFrame()
 

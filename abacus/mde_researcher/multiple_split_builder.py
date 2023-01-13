@@ -18,15 +18,15 @@ class MultipleSplitBuilder():
                  group_sizes: List[int],
                  stratification_params: SplitBuilderParams,
                  iterations_number: int = 10):
-        """Builds splits for experiments
+        """Builds splits for experiments.
 
         Args:
-            guests: dataframe with data for calculations injects and splits
-            metrics_names: list of metrics for which will be calculate injects columns
-            injects: list of injects
-            group_sizes: list of group sizes for split building
-            stratification_params: stratification parameters
-            iterations_number: number of columns that will be build for each group size
+            guests (pandas.DataFrame): Dataframe with data for calculations injects and splits.
+            metrics_names (List[str]): List of metrics for which will be calculate injects columns.
+            injects (List[float]): List of injects.
+            group_sizes (List[int]): List of group sizes for split building.
+            stratification_params (SplitBuilderParams): Stratification parameters.
+            iterations_number (int, default = ``10``): Number of columns that will be build for each group size.
         """
         self.guests = guests
         self.metrics_names = metrics_names
@@ -42,7 +42,7 @@ class MultipleSplitBuilder():
                     for el in itertools.product(self.group_sizes, np.arange(1, self.iterations_number+1)))
 
     def _update_strat_params(self):
-        """Update stratification columns, because of columns names duplicated problem
+        """Update stratification columns, because of columns names duplicated problem.
         """
         self.stratification_params.cols = [el + "_strat"
                                            if el not in [self.stratification_params.main_strata_col, 
@@ -52,13 +52,14 @@ class MultipleSplitBuilder():
                                            for el in self.stratification_params.cols]
         self.stratification_params.cat_cols = [el + "_strat" for el in self.stratification_params.cat_cols]
 
-    def calc_injected_merics(self, guests_for_injects: pd.DataFrame) -> pd.DataFrame:
-        """Calculates injected metrics for guests df
+    def calc_injected_metrics(self, guests_for_injects: pd.DataFrame) -> pd.DataFrame:
+        """Calculates injected metrics for guests df.
 
         Args:
-            guests_for_injects: dataframe with metrics columns
+            guests_for_injects (pandas.DataFrame): Dataframe with metrics columns.
 
-        Returns: dataframe with injected metrics columns
+        Returns:
+            pandas.DataFrame: Dataframe with injected metrics columns.
         """
         matched = list(itertools.product(self.metrics_names, self.injects))
         guests_for_injects_copy = guests_for_injects.copy()
@@ -71,15 +72,16 @@ class MultipleSplitBuilder():
                      control_group_size: int,
                      target_group_size: int,
                      split_number: int = 1):
-        """Calculate one split with stratification
+        """Calculate one split with stratification.
 
         Args:
-            guests_with_strata: Dataframe fwith stratas
-            control_group_size: control group size
-            target_group_size: target group size
-            split_number: number of split. Uses as suffix for new column
+            guests_with_strata (pandas.DataFrame): Dataframe with stratas.
+            control_group_size (int): Control group size.
+            target_group_size (int): Target group size.
+            split_number (int, default = ``1``): Number of split. Uses as suffix for new column.
 
-        Returns: pandas DataFrame with split
+        Returns:
+            pandas.DataFrame: pandas DataFrame with split.
         """
         map_group_names_to_sizes={
             "control": control_group_size,
@@ -97,9 +99,10 @@ class MultipleSplitBuilder():
                               ,f"is_control_{control_group_size}_{target_group_size}_{split_number}"]]
 
     def collect(self) -> pd.DataFrame:
-        """Calculate multiple split with stratification
+        """Calculate multiple split with stratification.
 
-        Returns: pandas DataFrame with split columns
+        Returns:
+            pandas.DataFrame: Pandas DataFrame with split columns.
         """
         guests_data_with_strata = self.split_builder._assign_strata(self.split_builder.split_data)
         experiment_guests = self.guests.loc[:, [self.stratification_params.id_col]]

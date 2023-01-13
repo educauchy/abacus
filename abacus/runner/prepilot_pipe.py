@@ -1,5 +1,5 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 from abacus.splitter.params import SplitBuilderParams
 from abacus.mde_researcher.params import MdeParams
 from abacus.mde_researcher.mde_research_builder import MdeResearchBuilder

@@ -8,7 +8,6 @@ from pydantic import validator
 class SplitBuilderParams:
     min_unique_values_in_col: ClassVar[int] = 3
     control_group_name: ClassVar[str] = "control"
-
     map_group_names_to_sizes: Dict[str, Optional[int]]
     main_strata_col: str
     split_metric_col: str

@@ -22,10 +22,10 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
                  stratification_params: SplitBuilderParams):
         """
         Args:
-            guests: dataframe that collected by PrepilotGuestsCollector.
-            abtest_params: A/B tests params. Using for experiments calculations.
-            experiment_params: prameters for prepilot experiments.
-            stratification_params: params for groups splits and stratifications.
+            guests (pandas.DataFrame): Dataframe that collected by PrepilotGuestsCollector.
+            abtest_params (ABTestParams): A/B tests params. Using for experiments calculations.
+            experiment_params (MdeParams): Parameters for prepilot experiments.
+            stratification_params (SplitBuilderParams): Params for groups splits and stratifications.
         """
         super().__init__(guests, abtest_params, experiment_params)
         self.stratification_params = stratification_params
@@ -35,14 +35,14 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
                                    guests_with_splits: pd.DataFrame,
                                    grid_element: Union[MdeBetaExperiment, MdeAlphaExperiment]
     ) -> pd.DataFrame:
-        """Calculates stat test forr one experiment grid element.
+        """Calculates stat test for one experiment grid element.
 
         Args:
-            guests_with_splits: DataFrame with calculated splits for experiment.
-            grid_element: experiment params.
+            guests_with_splits (pandas.DataFrame): DataFrame with calculated splits for experiment.
+            grid_element (Union[MdeBetaExperiment, MdeAlphaExperiment]): Experiment params.
 
-        Returns: pandas DataFrame with calculated stat test and experiment parameters.
-
+        Returns:
+            pandas.DataFrame: Pandas DataFrame with calculated stat test and experiment parameters.
         """
         row_dict = {
             "metric": [grid_element.metric_name],
@@ -73,10 +73,10 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
         """Fill Nan for passed experiments.
 
         Args:
-            aggregated_df: dataframe with calculated experiments.
+            aggregated_df (pandas.DataFrame): Dataframe with calculated experiments.
 
-        Returns: pandas DataFrame with filled values.
-
+        Returns:
+            pandas.DataFrame: Pandas DataFrame with filled values.
         """
         for metric in self._experiment_params.metrics_names:
             for split in self.group_sizes:
@@ -101,10 +101,10 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
         """Calculates II type error for df with calculated experiments.
 
         Args:
-            df_with_calc: dataframe with calculated experiments.
+            df_with_calc (pandas.DataFrame): Dataframe with calculated experiments.
 
-        Returns: df with II type error.
-
+        Returns:
+            pandas.DataFrame: DataFrame with II type error.
         """
         res_agg = (df_with_calc
                    .groupby(by=["metric", "split_rate", "MDE"])
@@ -124,13 +124,13 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
         """Fill column with defalt values.
 
         Args:
-            df: pandas Datafrmae for replace default values.
-            column_name: df's column name for replace values.
-            min_val: minimal value for replace.
-            max_val: maximal value for replace.
+            df (pandas.DataFrame): Pandas Dataframe for replace default values.
+            column_name (str): DataFrame's column name for replace values.
+            min_val (float): Minimum value for replace.
+            max_val (float): Maximum value for replace.
 
-        Returns: df with replaced values.
-
+        Returns:
+            pandas.DataFrame: df with replaced values.
         """
         df[column_name] = np.where(df[column_name] >= max_val,
                                    f">={max_val}",
@@ -141,16 +141,16 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
 
     def _calc_beta(self, 
                    guests_with_splits,
-                   fill_with_default=True
+                   fill_with_default: bool = True
     ) -> pd.DataFrame:
         """Calculates II type error.
 
         Args:
-            guests_with_splits: dataframe with precalculated splits.
-            fill_with_default: fill calculated vaules with defaults.
+            guests_with_splits (): Dataframe with precalculated splits.
+            fill_with_default (bool): Fill calculated vaules with defaults.
 
-        Returns: pandas DataFrame with II type error.
-
+        Returns:
+            pandas.DataFrame: Pandas DataFrame with II type error.
         """
         beta_scores = pd.DataFrame()
         res_agg = pd.DataFrame()
@@ -213,14 +213,14 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
         return res_pivoted
 
     @staticmethod
-    def _first_found_mde(df_column: pd.Series):
+    def _first_found_mde(df_column: pd.Series) -> int:
         """Calculate max possible MDE for group sizes.
 
         Args:
-            df_column: df's column with II type error scores.
+            df_column (pandas.Series): DataFrame's column with II type error scores.
 
-        Returns: max possible MDE for group sizes.
-
+        Returns:
+            int: Max possible MDE for group sizes.
         """
         if not df_column[(df_column != 0) & (df_column != 1)]:
             return "Effect wasn't detected"
@@ -228,17 +228,17 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
             return df_column[(df_column != 0) & (df_column != 1)].idxmax()[1]
 
     def calc_alpha(self, guests: pd.DataFrame,
-                   is_splited: bool = False):
+                   is_splitted: bool = False) -> pd.DataFrame:
         """Calculates I type error.
 
         Args:
-            guests: dataframe with guests.
-            is_splited: if False guests must contain splits for calculation.
-            Otherwise splits will be compute for guests.
+            guests (pandas.DataFrame): Dataframe with guests.
+            is_splitted (bool): If False guests must contain splits for calculation. Otherwise splits will be compute for guests.
 
-        Returns: pandas DataFrame with I type error.
+        Returns:
+            pandas.DataFrame: Pandas DataFrame with I type error.
         """
-        if not is_splited:
+        if not is_splitted:
             prepilot_guests_collector = MultipleSplitBuilder(guests, self.experiment_params.metrics_names,
                                                              self.experiment_params.injects, self.group_sizes,
                                                              self.stratification_params,
@@ -274,15 +274,14 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
                     )
         return res_pivoted
 
-    def collect(self, fill_with_default=True) -> pd.DataFrame:
+    def collect(self, fill_with_default: bool = True) -> pd.DataFrame:
         """Calculates I and II types error using prepilot parameters.
 
         Args:
-            stratification_params: params for stratification
-            fill_with_default: fill calculated vaules with defaults.
+            fill_with_default (bool): Fill calculated vaules with defaults.
 
-        Returns: pandas DataFrames with aggregated results of experiment.
-
+        Returns:
+            pandas.DataFrame: Pandas DataFrames with aggregated results of experiment.
         """
         prepilot_split_builder = MultipleSplitBuilder(self.guests,
                                                          self.experiment_params.metrics_names,
@@ -293,7 +292,6 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
 
         prepilot_guests = prepilot_split_builder.collect()
 
-        beta = self._calc_beta(prepilot_guests,fill_with_default)
-        alpha = self.calc_alpha(prepilot_guests,
-                                is_splited = True)
+        beta = self._calc_beta(prepilot_guests, fill_with_default)
+        alpha = self.calc_alpha(prepilot_guests, is_splitted = True)
         return beta, alpha

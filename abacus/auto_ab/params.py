@@ -7,9 +7,6 @@ import numpy as np
 class ValidationConfig:
     validate_assignment = True
     arbitrary_types_allowed = True
-    #error_msg_templates = {
-    #    'value_error.any_str.max_length': 'max_length:{limit_value}',
-    #}
 
 @dataclass(config=ValidationConfig)
 class DataParams:

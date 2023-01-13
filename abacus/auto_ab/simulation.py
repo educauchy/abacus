@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.stats import ttest_ind
+from scipy.stats import ttest_ind, t
 from collections import defaultdict
 from hyperopt import hp, fmin, tpe, Trials, space_eval
 
@@ -25,16 +25,16 @@ class Simulation:
         self.increment_list: List[float] = None
         self.increment_extra: Dict[str, float] = None
 
-    def _add_increment(self, X: Union[pd.DataFrame, np.array] = None,
-                       inc_value: Union[float, int] = None) -> np.array:
+    def _add_increment(self, X: Union[pd.DataFrame, np.ndarray],
+                       inc_value: Union[float, int]) -> np.ndarray:
         """ Add constant increment to a list
 
         Args:
-            :param X: Numpy array to modify
-            :param inc_value: Constant addendum to each value
+            X (np.ndarray): Numpy array to modify
+            inc_value (Union[float, int]): Constant addendum to each value
 
         Returns:
-            Modified X array
+            numpy.ndarray: Modified X array
         """
         if self.config['metric_type'] == 'solid':
             return X + inc_value
@@ -250,7 +250,7 @@ class Simulation:
             a_samples, b_samples = int(round(n * control_share, 0) + 1), int(round(n * treatment_share, 0) + 1)
             return (a_samples, b_samples)
 
-    def mde(self, std: float = None, n_samples: int = None) -> float:
+    def mde(self, std: float, n_samples: int) -> float:
         """ Calculate Minimum Detectable Effect using Margin of Error formula
 
         Args:
