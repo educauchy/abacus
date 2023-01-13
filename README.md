@@ -99,3 +99,11 @@ aatest_params:
 |aatest_params|method|string|Name of A/A test to use|kl-divergence|-|Currently not used|
 |aatest_params|to_cluster|boolean|Whether of not to use clustering before A/A test|True|-|Currently not used|
 |aatest_params|n_clusters|integer|Number of clusters|50|-|Currently not used|
+
+# Docs compilation
+
+```sheel
+pip install mkl mkl-service
+cd docs/
+make html
+```

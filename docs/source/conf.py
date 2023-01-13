@@ -37,11 +37,16 @@ author = "Glowbyte. Advanced Analytics team"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.duration',
-    'sphinx.ext.doctest',
+    # 'readthedocs_ext.readthedocs',
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'sphinx.ext.intersphinx',
+    'sphinx.ext.doctest',
+    'sphinx.ext.duration',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.todo',
+    'sphinx.ext.viewcode',
+    'numpydoc',
+    'sphinx_rtd_theme'
 ]
 
 numpydoc_show_class_members = False
@@ -68,3 +73,6 @@ html_theme_options = {"display_version": True, "logo_only": True}
 html_static_path = ["_static"]
 html_css_files = ["css/style.css"]
 html_logo = "_static/abacus.png"
+
+# Custome
+autosummary_generate = True

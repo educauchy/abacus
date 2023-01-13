@@ -20,11 +20,11 @@ class SplitBuilder:
     def __init__(self, 
                  split_data: pd.DataFrame, 
                  params: SplitBuilderParams):
-        """Builds stratification split for DataFrame
+        """Builds stratification split for DataFrame.
 
         Args:
-            split_data: dataframe with data building split
-            params: params for stratification and spilt
+            split_data (pandas.DataFrame): dataframe with data building split
+            params (SplitBuilderParams): params for stratification and spilt
         """
         self.split_data = split_data.reset_index(drop=True)
         self.params = params
@@ -37,14 +37,14 @@ class SplitBuilder:
         first feature (_encoded): there are two cases:
             (1) If the number of unique values of feature more than the value "min_cluster_size" from config,
                 then values with low frequency will be combined into one ("other" with code DEFAULT_CAT_VALUE).
-                After encoding feature will contain (min_cluster_size + 1) unique values.
+                After encoding feature will contain (min_cluster_size + 1) unique values;
             (2) If the number of unique values of feature less than the value "min_cluster_size" from config,
-                the new column will be the same as the original.
+                the new column will be the same as the original;
 
-        second feature (_freq): frequency with noise of the encoded feature
+        second feature (_freq): frequency with noise of the encoded feature.
 
         Return:
-            pd.DataFrame: DataFrame with extra columns
+            pandas.DataFrame: DataFrame with extra columns;
         """
         df_cat = df.copy()
         for col in self.params.cat_cols:
@@ -105,10 +105,10 @@ class SplitBuilder:
         return df[strata].astype(str) + labels
 
     def _assign_strata(self, df) -> pd.DataFrame:
-        """Assigns strata for rows
+        """Assigns strata for rows.
 
         Returns:
-            DataFrame with strata columns
+            pandas.DataFrame: DataFrame with strata columns.
         """
         transform = [self._prepare_categorical, self._binnarize]
         pipeline = Pipeline(transform)
@@ -180,13 +180,13 @@ class SplitBuilder:
 
 
     def _build_split(self, df_with_strata_col: pd.DataFrame) -> pd.DataFrame:
-        """Builds strarified split
+        """Builds stratified split.
 
         Args:
-            df_with_strata_col: DataFrame with strata column
+            df_with_strata_col (pandas.DataFrame): DataFrame with strata column.
 
         Returns:
-            DataFrame with split
+            pandas.DataFrame: DataFrame with split.
         """
         max_attempts = 50
         for _ in range(max_attempts):

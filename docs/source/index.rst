@@ -2,14 +2,15 @@ Welcome to ABacus documentation!
 ================================
 
 .. shields start
-|PyPI| |PyPI License| |ReadTheDocs|
 
+|PyPI| |PyPI License| |ReadTheDocs|
 .. |PyPI| image:: https://img.shields.io/pypi/v/abacus
     :target: https://pypi.org/project/abacus
 .. |PyPI License| image:: https://img.shields.io/pypi/l/abacus.svg
     :target: https://github.com/educauchy/abacus/blob/main/LICENSE
 .. |ReadTheDocs| image:: https://img.shields.io/readthedocs/abacus.svg
     :target: https://abacus.readthedocs.io
+
 .. shields end
 
 .. image:: https://raw.githubusercontent.com/educauchy/abacus/main/docs/source/_static/abacus.png
@@ -24,7 +25,7 @@ prepilot, sample size determination, results calculation.
 
 
 Important features
------------------
+------------------
 
 * Prepilot design: type I/II errors, effect size, sample size simulations
 * Groups splitting
@@ -36,17 +37,12 @@ Important features
 
    This project is under active development.
 
-
 .. toctree::
     :maxdepth: 1
     :caption: Usage
     :name: usage
 
-    install
-    prepilot
-    evaluation
-    sensitivity
-
+    usage
 
 .. toctree::
     :maxdepth: 1
@@ -56,12 +52,10 @@ Important features
     auto_ab
     mde_researcher
     resplitter
-    runner
     splitter
 
-
 Examples
--------------
+--------
 
 For more details, see the `examples <https://github.com/educauchy/abacus/tree/main/examples>`_.
 

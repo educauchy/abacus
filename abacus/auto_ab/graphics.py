@@ -1,14 +1,9 @@
-import sys
+from typing import List, Union
 import numpy as np
-import yaml
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import Union, Dict, List, Optional
-from scipy.stats import norm, mode
-
-# sys.path.append('..')
-from abacus.auto_ab.params import *
+from abacus.auto_ab.params import ABTestParams
 
 
 class Graphics:
@@ -20,7 +15,7 @@ class Graphics:
         """Plot log of simulation matrix
 
         Args:
-            log_path: Path to log file in .csv format
+            log_path (str): Path to log file in .csv format.
         """
         df = pd.read_csv(log_path)
         df_pivot = df.pivot(index='split_rate', columns='increment', values='pval_sign_share')
@@ -31,15 +26,15 @@ class Graphics:
         plt.close()
 
     @staticmethod
-    def plot_median_experiment(params: ABTestParams = ABTestParams()) -> None:
+    def plot_median_experiment(params: ABTestParams) -> None:
         """Plot distributions of medians in experiment groups
 
         Args:
-            params: Parameters of the experiment
+            params (ABTestParams): Parameters of the experiment.
         """
         bins = 100
-        a_median = np.mean(params.data_params.control)
-        b_median = np.mean(params.data_params.treatment)
+        a_median = np.median(params.data_params.control)
+        b_median = np.median(params.data_params.treatment)
         threshold = np.quantile(params.data_params.control, 0.975)
         fig, ax = plt.subplots(figsize=(20, 12))
         ax.hist(params.data_params.control, bins, alpha=0.5, label='Control', color='Red')
@@ -52,11 +47,11 @@ class Graphics:
         plt.close()
 
     @staticmethod
-    def plot_mean_experiment(params: ABTestParams = ABTestParams()) -> None:
+    def plot_mean_experiment(params: ABTestParams) -> None:
         """Plot distributions of means in experiment groups
 
         Args:
-            params: Parameters of the experiment
+            params (ABTestParams): Parameters of the experiment.
         """
         bins = 100
         a_mean = np.mean(params.data_params.control)
@@ -75,13 +70,13 @@ class Graphics:
         plt.close()
 
     @staticmethod
-    def plot_bootstrap_confint(X: Union[np.array, List[Union[int, float]]] = None,
-                               params: ABTestParams = ABTestParams()) -> None:
+    def plot_bootstrap_confint(X: np.array,
+                               params: ABTestParams) -> None:
         """Plot bootstrap metric of experiment with its confidence interval
 
         Args:
-            X: Bootstrap metric
-            params: Parameters of the experiment
+            X (np.array): Bootstrap metric.
+            params (ABTestParams): Parameters of the experiment.
         """
         bins = 100
         ci_left, ci_right = np.quantile(X, params.hypothesis_params.alpha / 2), \
@@ -92,29 +87,3 @@ class Graphics:
         ax.vlines([ci_left, ci_right], ymin=0, ymax=100, linestyle='--', label='Confidence interval')
         ax.legend()
         plt.show()
-
-if __name__ == '__main__':
-    with open("./configs/auto_ab.config.yaml", "r") as stream:
-        try:
-            ab_config = yaml.safe_load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
-
-    data_params = DataParams(**ab_config['data_params'])
-    hypothesis_params = HypothesisParams(**ab_config['hypothesis_params'])
-
-    ab_params = ABTestParams(data_params,
-                             hypothesis_params)
-
-    dots = 10_000
-    boot_samples = 5000
-    a = np.random.normal(0, 4, dots)
-    b = np.random.normal(1, 6, dots)
-    gr = Graphics()
-
-    metric_diffs: List[float] = []
-    for _ in range(boot_samples):
-        x_boot = np.random.choice(a, size=a.shape[0], replace=True)
-        y_boot = np.random.choice(b, size=b.shape[0], replace=True)
-        metric_diffs.append(np.mean(y_boot) - np.mean(x_boot))
-    gr.plot_bootstrap_confint(metric_diffs, ab_params)

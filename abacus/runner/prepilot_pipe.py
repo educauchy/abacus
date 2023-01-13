@@ -1,5 +1,5 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 from abacus.splitter.params import SplitBuilderParams
 from abacus.mde_researcher.params import MdeParams
 from abacus.mde_researcher.mde_research_builder import MdeResearchBuilder
@@ -14,7 +14,6 @@ POSSIBLE_TESTS = [ABTest.test_hypothesis_boot_confint,
                 ABTest.test_hypothesis_ttest,
                 ABTest.delta_method,
                 ABTest.taylor_method,
-                ABTest.ratio_bootstrap
             ]
 
 

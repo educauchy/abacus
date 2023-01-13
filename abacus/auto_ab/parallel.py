@@ -1,6 +1,6 @@
+from typing import Optional
 import numpy as np
 import pandas as pd
-from typing import List, Any, Union, Optional
 import hashlib
 import secrets
 
@@ -14,9 +14,6 @@ class ParallelExperiments:
 
     def _modulo(self):
         """ Creates buckets using module approach
-
-        Returns:
-            None
         """
         self.dataset['bucket_id'] = np.remainder( self.dataset[self.id_col].to_numpy(),
                                                   self.n_buckets)
@@ -25,20 +22,13 @@ class ParallelExperiments:
         """ Creates buckets using hash function approach
 
         Args:
-            hash_func: Hash function
-            salt: Salt string for the experiment
-
-        Returns:
-            None
+            hash_func (str, optional): Hash function.
+            salt (str, optional): Salt string for the experiment.
         """
         if salt is None:
             salt = secrets.token_hex(8)
         salt: bytes = bytes(salt, 'utf-8')
-
-        if hash_func is not None:
-            pass
-        else:
-            hasher = hashlib.blake2b(salt=salt)
+        hasher = hashlib.blake2b(salt=salt)
 
         bucket_ids: np.array = np.array([])
         ids: np.array = self.dataset[self.id_col].to_numpy()
@@ -49,9 +39,3 @@ class ParallelExperiments:
 
         self.dataset.loc[:, 'bucket_id'] = bucket_ids
         self.dataset = self.dataset.astype({'bucket_id': 'int32'})
-
-
-if __name__ == '__main__':
-    user_ids = np.random.randint(1, 10**10, 100_000)
-    pe = ParallelExperiments(method='modulo')
-    pe.fit(user_ids)

@@ -22,13 +22,13 @@ sample size, effect size.
 
 
 Experiment evaluation
---------
+---------------------
 
 **ABacus** supports different types of metrics: continuous, binary, and ratio.
 
 
 Increasing Sensitivity
---------
+----------------------
 
 There are numerous methods for increasing sensitivity:
 

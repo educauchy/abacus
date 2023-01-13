@@ -6,3 +6,7 @@ sklearn
 tqdm
 pyyaml
 hyperopt
+pydantic
+hdbscan
+fastcore
+category_encoders

@@ -3,23 +3,24 @@ import itertools
 import numpy as np
 import pandas as pd
 from abacus.auto_ab.params import ABTestParams
+from abacus.mde_researcher.params import MdeParams
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
 class AbstractMdeResearchBuilder:
-    """Base class for Experiment Builders
+    """Base class for Experiment Builders.
     """
     def __init__(self,
                  guests: pd.DataFrame,
                  abtest_params: ABTestParams,
-                 experiment_params):
+                 experiment_params: MdeParams):
         """
         Args:
-            guests: pandas dataframe that collected by PrepilotGuestsCollector
-            abtest_params: A/B tests params. Using for experiments calculations.
-            experiment_params: parameters for experiments
+            guests (pandas.DataFrame): Pandas dataframe that collected by PrepilotGuestsCollector.
+            abtest_params (ABTestParams): A/B tests params. Using for experiments calculations..
+            experiment_params (MdeParams): Parameters for experiments.
         """
         self.guests = guests
         self.abtest_params = abtest_params
@@ -40,10 +41,10 @@ class AbstractMdeResearchBuilder:
         return self._group_sizes
 
     def _build_group_sizes(self):
-        """Build list of groups sizes tuples
+        """Build list of groups sizes tuples.
 
-        Returns: list of groups sizes pairs
-
+        Returns:
+            List[int]: List of groups sizes pairs.
         """
         control = np.sort(np.arange(self.experiment_params.min_group_size,
                                     self.experiment_params.max_group_size+1,

@@ -6,9 +6,6 @@ from pydantic.dataclasses import dataclass
 class ValidationConfig:
     validate_assignment = True
     arbitrary_types_allowed = True
-    #error_msg_templates = {
-    #    'value_error.any_str.max_length': 'max_length:{limit_value}',
-    #}
 
 @dataclass
 class GroupNames():
@@ -18,12 +15,12 @@ class GroupNames():
 
 @dataclass(config=ValidationConfig)
 class ResplitParams:
-    """Resplit params class
+    """Resplit params class.
 
     Args:
-        group_names: group names
-        strata_col: name of column with strata
-        group_col: name of column with groups split
+        group_names (GroupNames): group names
+        strata_col (str): name of column with strata
+        group_col (str): name of column with groups split
     """
     group_names: GroupNames
     strata_col: str = 'strata'
