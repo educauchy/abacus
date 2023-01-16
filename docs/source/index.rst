@@ -3,13 +3,16 @@ Welcome to ABacus documentation!
 
 .. shields start
 
-|PyPI| |PyPI License| |ReadTheDocs|
+|PyPI| |PyPI License| |ReadTheDocs| |Python Versions|
+
 .. |PyPI| image:: https://img.shields.io/pypi/v/abacus
     :target: https://pypi.org/project/abacus
 .. |PyPI License| image:: https://img.shields.io/pypi/l/abacus.svg
     :target: https://github.com/educauchy/abacus/blob/main/LICENSE
 .. |ReadTheDocs| image:: https://img.shields.io/readthedocs/abacus.svg
     :target: https://abacus.readthedocs.io
+.. |Python Versions| image:: https://img.shields.io/pypi/pyversions/abacus.svg
+    :target: https://pypi.org/project/abacus
 
 .. shields end
 
