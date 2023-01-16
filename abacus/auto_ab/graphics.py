@@ -10,9 +10,12 @@ class Graphics:
     def __init__(self) -> None:
         pass
 
-    @staticmethod
-    def plot_simulation_matrix(log_path: str):
-        """Plot log of simulation matrix
+    @classmethod
+    def plot_simulation_matrix(cls, log_path: str):
+        """Plot log of simulation matrix.
+
+        Axes of a matrix: ``split rate`` and ``increment``.
+        Cell value: share of significant simulations.
 
         Args:
             log_path (str): Path to log file in .csv format.
@@ -25,30 +28,9 @@ class Graphics:
         plt.show()
         plt.close()
 
-    @staticmethod
-    def plot_median_experiment(params: ABTestParams) -> None:
-        """Plot distributions of medians in experiment groups
-
-        Args:
-            params (ABTestParams): Parameters of the experiment.
-        """
-        bins = 100
-        a_median = np.median(params.data_params.control)
-        b_median = np.median(params.data_params.treatment)
-        threshold = np.quantile(params.data_params.control, 0.975)
-        fig, ax = plt.subplots(figsize=(20, 12))
-        ax.hist(params.data_params.control, bins, alpha=0.5, label='Control', color='Red')
-        ax.hist(params.data_params.treatment, bins, alpha=0.5, label='Treatment', color='Green')
-        ax.axvline(x=a_median, color='Red')
-        ax.axvline(x=b_median, color='Green')
-        ax.axvline(x=threshold, color='Blue', label='Critical value')
-        ax.legend(loc='upper right')
-        plt.show()
-        plt.close()
-
-    @staticmethod
-    def plot_mean_experiment(params: ABTestParams) -> None:
-        """Plot distributions of means in experiment groups
+    @classmethod
+    def plot_mean_experiment(cls, params: ABTestParams) -> None:
+        """Plot distributions of means in experiment groups.
 
         Args:
             params (ABTestParams): Parameters of the experiment.
@@ -69,10 +51,33 @@ class Graphics:
         plt.show()
         plt.close()
 
-    @staticmethod
-    def plot_bootstrap_confint(X: np.array,
+    @classmethod
+    def plot_median_experiment(cls, params: ABTestParams) -> None:
+        """Plot distributions of medians in experiment groups.
+
+        Args:
+            params (ABTestParams): Parameters of the experiment.
+        """
+        bins = 100
+        a_median = np.median(params.data_params.control)
+        b_median = np.median(params.data_params.treatment)
+        threshold = np.quantile(params.data_params.control, 0.975)
+        fig, ax = plt.subplots(figsize=(20, 12))
+        ax.hist(params.data_params.control, bins, alpha=0.5, label='Control', color='Red')
+        ax.hist(params.data_params.treatment, bins, alpha=0.5, label='Treatment', color='Green')
+        ax.axvline(x=a_median, color='Red')
+        ax.axvline(x=b_median, color='Green')
+        ax.axvline(x=threshold, color='Blue', label='Critical value')
+        ax.legend(loc='upper right')
+        plt.show()
+        plt.close()
+
+    @classmethod
+    def plot_bootstrap_confint(cls,
+                               X: np.array,
                                params: ABTestParams) -> None:
-        """Plot bootstrap metric of experiment with its confidence interval
+        """Plot bootstrapped metric of an experiment with its confidence
+        interval and zero value.
 
         Args:
             X (np.array): Bootstrap metric.

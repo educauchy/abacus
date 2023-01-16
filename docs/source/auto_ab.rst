@@ -7,6 +7,10 @@ ABTest
 ------
 
 .. autoclass:: abacus.auto_ab.ABTest
+..
+    .. automethod:: bucketing, cupac, cuped, delta_method, linearization, plot, ratio_bootstrap,
+        resplit_df, test_boot_hypothesis, test_chisquare, test_hypothesis_ttest, test_hypothesis_mannwhitney,
+        test_hypothesis_boot
 
 .. autosummary::
     :nosignatures:
@@ -20,18 +24,18 @@ ABTest
     ABTest.plot
     ABTest.ratio_bootstrap
     ABTest.resplit_df
-    ABTest.test_hypothesis_ttest
-    ABTest.test_hypothesis_mannwhitney
+    ABTest.test_boot_confint
+    ABTest.test_boot_fp
+    ABTest.test_boot_welch
+    ABTest.test_buckets
     ABTest.test_chisquare
-    ABTest.test_hypothesis_ztest_prop
-    ABTest.test_hypothesis_buckets
-    ABTest.test_hypothesis_strat_confint
-    ABTest.test_hypothesis_boot_est
-    ABTest.test_hypothesis_boot_confint
-    ABTest.test_boot_hypothesis
+    ABTest.test_mannwhitney
+    ABTest.test_strat_confint
+    ABTest.test_welch
+    ABTest.test_z_proportions
 
 .. autofunction:: abacus.auto_ab.ABTest.__bucketize
-.. autofunction:: abacus.auto_ab.ABTest.__check_columns
+.. autofunction:: abacus.auto_ab.ABTest.__check_required_columns
 .. autofunction:: abacus.auto_ab.ABTest.__get_group
 .. autofunction:: abacus.auto_ab.ABTest._delta_params
 .. autofunction:: abacus.auto_ab.ABTest._linearize
@@ -46,15 +50,15 @@ ABTest
 .. autofunction:: abacus.auto_ab.ABTest.plot
 .. autofunction:: abacus.auto_ab.ABTest.ratio_bootstrap
 .. autofunction:: abacus.auto_ab.ABTest.resplit_df
-.. autofunction:: abacus.auto_ab.ABTest.test_hypothesis_ttest
-.. autofunction:: abacus.auto_ab.ABTest.test_hypothesis_mannwhitney
+.. autofunction:: abacus.auto_ab.ABTest.test_boot_confint
+.. autofunction:: abacus.auto_ab.ABTest.test_boot_fp
+.. autofunction:: abacus.auto_ab.ABTest.test_boot_welch
+.. autofunction:: abacus.auto_ab.ABTest.test_buckets
 .. autofunction:: abacus.auto_ab.ABTest.test_chisquare
-.. autofunction:: abacus.auto_ab.ABTest.test_hypothesis_ztest_prop
-.. autofunction:: abacus.auto_ab.ABTest.test_hypothesis_buckets
-.. autofunction:: abacus.auto_ab.ABTest.test_hypothesis_strat_confint
-.. autofunction:: abacus.auto_ab.ABTest.test_hypothesis_boot_est
-.. autofunction:: abacus.auto_ab.ABTest.test_hypothesis_boot_confint
-.. autofunction:: abacus.auto_ab.ABTest.test_boot_hypothesis
+.. autofunction:: abacus.auto_ab.ABTest.test_mannwhitney
+.. autofunction:: abacus.auto_ab.ABTest.test_strat_confint
+.. autofunction:: abacus.auto_ab.ABTest.test_welch
+.. autofunction:: abacus.auto_ab.ABTest.test_z_proportions
 
 VarianceReduction
 -----------------

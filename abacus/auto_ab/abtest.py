@@ -13,17 +13,19 @@ from abacus.resplitter.params import ResplitParams
 
 
 metric_name_typing = Union[str, Callable[[np.ndarray], Union[int, float]]]
-stat_test_typing = Dict[ str, Union[int, float] ]
+stat_test_typing = Dict[str, Union[int, float]]
 
 class ABTest:
-    """Performs AB-test
+    """Performs different calculations of A/B-test:
+    - Results evaluation for different metric types (continuous, binary, ratio).
+    - Bucketing (decrease number of points, normal distribution of metric of interest)
     """
     def __init__(self,
                  dataset: pd.DataFrame,
                  params: ABTestParams
                  ) -> None:
         self.params = params
-        self.__check_columns(dataset, 'init')
+        self.__check_required_columns(dataset, 'init')
         self.__dataset = dataset
         self.params.data_params.control = self.__get_group(self.params.data_params.control_name, self.dataset)
         self.params.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, self.dataset)
@@ -37,12 +39,16 @@ class ABTest:
                f"beta={self.params.hypothesis_params.beta}, " \
                f"alternative='{self.params.hypothesis_params.alternative}')"
 
-    def __check_columns(self, df: pd.DataFrame, method: str) -> None:
+    def __check_required_columns(self, df: pd.DataFrame, method: str) -> None:
         """Check presence of columns in dataframe.
 
         Args:
             df (pandas.DataFrame): DataFrame to check.
             method (str): Stage of A/B process which you'd like to test.
+
+        Raises:
+            ValueError: If `is_valid_col` is False. Experiment cannot be provided
+            if required columns are absent.
         """
         cols: List[str] = []
         if method == 'init':
@@ -57,28 +63,26 @@ class ABTest:
             cols = ['covariate']
         elif method == 'cupac':
             cols = ['predictors_prev', 'target_prev', 'predictors']
-        elif method == 'clustering':
-            cols = ['cluster_col', 'clustering_cols']
         elif method == 'resplit_df':
             cols = ['strata_col']
 
         is_valid_col: bool = True
+        invalid_cols = []
         for col in cols:
             curr_col = getattr(self.params.data_params, col)
             if isinstance(curr_col, str) and curr_col is not None:
                 if curr_col not in df:
                     is_valid_col = False
-                    warnings.warn(f'Column {col} is not presented in dataframe')
-                    break
+                    invalid_cols.append(curr_col)
+
             elif isinstance(curr_col, list) and curr_col is not None:
                 for curr_c in curr_col:
                     if curr_c not in df:
                         is_valid_col = False
-                        warnings.warn(f'Column {col} is not presented in dataframe')
-                        break
+                        invalid_cols.append(curr_c)
 
         if not is_valid_col:
-            raise Exception('One or more columns are not presented in dataframe')
+            raise ValueError(f'The following columns are not in dataframe: {*invalid_cols, }')
 
     def __get_group(self, group_label: str, df: Optional[pd.DataFrame] = None) -> np.ndarray:
         """Gets target metric column based on desired group label.
@@ -94,43 +98,56 @@ class ABTest:
         group = np.array([])
         if self.params.hypothesis_params.metric_type == 'solid':
             group = X.loc[X[self.params.data_params.group_col] == group_label, \
-                            self.params.data_params.target].to_numpy()
+                          self.params.data_params.target].to_numpy()
         elif self.params.hypothesis_params.metric_type == 'binary':
             group = X.loc[X[self.params.data_params.group_col] == group_label, \
-                            self.params.data_params.target_flg].to_numpy()
+                          self.params.data_params.target_flg].to_numpy()
         return group
 
     def __bucketize(self, X: np.ndarray) -> np.ndarray:
-        """Split array into buckets.
+        """Split array ``X`` into N non-overlapping buckets.
+
+        There are two purposes for this actions:
+
+        1. Decrease number of data points of experiment.
+        2. Get normal distribution of a metric of interest.
+
+        Procedure:
+
+        1. Shuffle elements of an array.
+        2. Split points into N non-overlapping buckets.
+        3. On every bucket calculate metric of interest.
 
         Args:
             X (np.ndarray): Array to split.
 
         Returns:
-            np.ndarray: Splitted array.
+            np.ndarray: Splitted into buckets array.
         """
         np.random.shuffle(X)
         X_new = np.array([ self.params.hypothesis_params.metric(x)
                            for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
         return X_new
 
-    def _manual_ttest(self, A_mean: float, A_var: float, A_size: int,
-                      B_mean: float, B_var: float, B_size: int) -> stat_test_typing:
-        """Performs Student's t-test based on aggregation metrics instead of datasets.
+    def _manual_ttest(self, ctrl_mean: float, ctrl_var: float, ctrl_size: int,
+                      treat_mean: float, treat_var: float, treat_size: int) -> stat_test_typing:
+        """Performs Welch's t-test based on aggregation metrics instead of datasets.
+
+        For empirical calculation of T-statistic we need: expectation, variance, array size for each group.
 
         Args:
-            A_mean (float): Mean of control group.
-            A_var (float): Variance of control group.
-            A_size (int): Size of control group.
-            B_mean (float): Mean of treatment group.
-            B_var (float): Variance of treatment group.
-            B_size (int): Size of treatment group.
+            ctrl_mean (float): Mean of control group.
+            ctrl_var (float): Variance of control group.
+            ctrl_size (int): Size of control group.
+            treat_mean (float): Mean of treatment group.
+            treat_var (float): Variance of treatment group.
+            treat_size (int): Size of treatment group.
 
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        t_stat_empirical = (A_mean - B_mean) / (A_var / A_size + B_var / B_size) ** (1/2)
-        df = A_size + B_size - 2
+        t_stat_empirical = (ctrl_mean - treat_mean) / (ctrl_var / ctrl_size + treat_var / treat_size) ** (1/2)
+        df = ctrl_size + treat_size - 2
 
         test_result: int = 0
         if self.params.hypothesis_params.alternative == 'two-sided':
@@ -165,6 +182,8 @@ class ABTest:
     def _delta_params(self, X: pd.DataFrame) -> Tuple[float, float]:
         """ Calculated expectation and variance for ratio metric using delta approximation.
 
+        Source: https://arxiv.org/pdf/1803.06336.pdf.
+
         Args:
             X (pandas.DataFrame): Pandas DataFrame of particular group (A, B, etc).
 
@@ -186,6 +205,8 @@ class ABTest:
 
     def _taylor_params(self, X: pd.DataFrame) -> Tuple[float, float]:
         """ Calculated expectation and variance for ratio metric using Taylor expansion approximation.
+
+        Source: https://www.stat.cmu.edu/~hseltman/files/ratio.pdf.
 
         Args:
             X (pandas.DataFrame): Pandas DataFrame of particular group (A, B, etc).
@@ -263,6 +284,7 @@ class ABTest:
 
     def taylor_method(self) -> stat_test_typing:
         """ Calculate expectation and variance of ratio for each group and then use t-test for hypothesis testing.
+
         Source: http://www.stat.cmu.edu/~hseltman/files/ratio.pdf.
 
         Returns:
@@ -278,6 +300,7 @@ class ABTest:
 
     def delta_method(self) -> stat_test_typing:
         """ Delta method with bias correction for ratios.
+
         Source: https://arxiv.org/pdf/1803.06336.pdf.
 
         Returns:
@@ -296,6 +319,7 @@ class ABTest:
         Important: there is an assumption that all data is already grouped by user
         s.t. numerator for user = sum of numerators for user for different time periods
         and denominator for user = sum of denominators for user for different time periods
+
         Source: https://research.yandex.com/publications/148.
         """
         if not self.params.data_params.is_grouped:
@@ -308,8 +332,8 @@ class ABTest:
             self.__dataset = df_grouped
         self._linearize()
 
-    def test_hypothesis_ttest(self) -> stat_test_typing:
-        """Performs Student's t-test.
+    def test_welch(self) -> stat_test_typing:
+        """Performs Welch's t-test.
 
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
@@ -317,8 +341,8 @@ class ABTest:
         X = self.params.data_params.control
         Y = self.params.data_params.treatment
 
-        normality_passed = shapiro(X)[1] >= self.params.hypothesis_params.alpha \
-                           and shapiro(Y)[1] >= self.params.hypothesis_params.alpha
+        normality_passed = (shapiro(X).pvalue >= self.params.hypothesis_params.alpha) \
+                           and (shapiro(Y).pvalue >= self.params.hypothesis_params.alpha)
         if not normality_passed:
             warnings.warn('One or both distributions are not normally distributed')
         if self.params.hypothesis_params.metric_name != 'mean':
@@ -338,8 +362,17 @@ class ABTest:
         }
         return result
 
-    def test_hypothesis_mannwhitney(self) -> stat_test_typing:
+    def test_mannwhitney(self) -> stat_test_typing:
         """Performs Mann-Whitney test.
+
+        Metric of a test: shift in treatment with respect to control.
+
+        Test works on continues metrics and their ranks.
+
+        Assumptions of Mann-Whitney test:
+
+        1. Independence of observations.
+        2. Same shape of metric distributions.
 
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
@@ -388,8 +421,10 @@ class ABTest:
         }
         return result
 
-    def test_hypothesis_ztest_prop(self) -> stat_test_typing:
+    def test_z_proportions(self) -> stat_test_typing:
         """Performs z-test for proportions.
+
+        The two-proportions z-test is used to compare two observed proportions.
 
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
@@ -412,7 +447,7 @@ class ABTest:
         }
         return result
 
-    def test_hypothesis_buckets(self) -> stat_test_typing:
+    def test_buckets(self) -> stat_test_typing:
         """ Performs buckets hypothesis testing.
 
         Returns:
@@ -429,7 +464,8 @@ class ABTest:
                            for y in np.array_split(Y, self.params.hypothesis_params.n_buckets) ])
 
         test_result: int = 0
-        if shapiro(X_new)[1] >= self.params.hypothesis_params.alpha and shapiro(Y_new)[1] >= self.params.hypothesis_params.alpha:
+        if (shapiro(X_new).pvalue >= self.params.hypothesis_params.alpha) \
+                and (shapiro(Y_new).pvalue >= self.params.hypothesis_params.alpha):
             stat, pvalue = ttest_ind(X_new, Y_new, equal_var=False, alternative=self.params.hypothesis_params.alternative)
             if pvalue <= self.params.hypothesis_params.alpha:
                 test_result = 1
@@ -438,7 +474,7 @@ class ABTest:
                 modes, _ = mode(X)
                 return sum(modes) / len(modes)
             self.params.hypothesis_params.metric = metric
-            stat, pvalue, test_result = self.test_hypothesis_boot_confint()
+            stat, pvalue, test_result = self.test_boot_confint()
 
         result = {
             'stat': stat,
@@ -447,7 +483,7 @@ class ABTest:
         }
         return result
 
-    def test_hypothesis_strat_confint(self) -> stat_test_typing:
+    def test_strat_confint(self) -> stat_test_typing:
         """ Performs stratification with confidence interval.
 
         Returns:
@@ -488,8 +524,8 @@ class ABTest:
         }
         return result
 
-    def test_hypothesis_boot_est(self) -> stat_test_typing:
-        """ Performs bootstrap confidence interval with.
+    def test_boot_fp(self) -> stat_test_typing:
+        """ Performs bootstrap hypothesis testing by calculation by calculation of false positives.
 
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
@@ -528,8 +564,9 @@ class ABTest:
         }
         return result
 
-    def test_hypothesis_boot_confint(self) -> stat_test_typing:
-        """ Performs bootstrap confidence interval.
+    def test_boot_confint(self) -> stat_test_typing:
+        """ Performs bootstrap confidence interval and zero
+        statistical significance.
 
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
@@ -578,8 +615,11 @@ class ABTest:
         }
         return result
 
-    def test_boot_hypothesis(self) -> stat_test_typing:
-        """ Performs T-test for independent samples with unequal number of observations and variance.
+    def test_boot_welch(self) -> stat_test_typing:
+        """ Performs Welch's t-test for independent samples with unequal number of observations and variance.
+
+        Welch's t-test is used as a wider approaches with less restrictions on samples size as in
+        Student's t-test.
 
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
@@ -600,7 +640,28 @@ class ABTest:
 
         pvalue = T / self.params.hypothesis_params.n_boot_samples
 
-        return pvalue
+        test_result: int = 0 # 0 - cannot reject H0, 1 - reject H0
+        if pvalue <= self.params.hypothesis_params.alpha:
+            test_result = 1
+
+        result = {
+            'stat': None,
+            'p-value': pvalue,
+            'result': test_result
+        }
+        return result
+
+    def bucketing(self):
+        """Performs bucketing in order to accelerate results computation.
+
+        Returns:
+            ABTest: New instance of ABTest class with modified control and treatment.
+        """
+        params_new = copy.deepcopy(self.params)
+        params_new.data_params.control   = self.__bucketize(self.params.data_params.control)
+        params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
+
+        return ABTest(self.__dataset, params_new)
 
     def cuped(self):
         """Performs CUPED for variance reduction.
@@ -608,9 +669,8 @@ class ABTest:
         Returns:
             ABTest: New instance of ABTest class with modified control and treatment.
         """
-        self.__check_columns(self.__dataset, 'cuped')
-        vr = VarianceReduction()
-        result_df = vr.cuped(self.__dataset,
+        self.__check_required_columns(self.__dataset, 'cuped')
+        result_df = VarianceReduction.cuped(self.__dataset,
                             target=self.params.data_params.target,
                             groups=self.params.data_params.group_col,
                             covariate=self.params.data_params.covariate)
@@ -627,9 +687,8 @@ class ABTest:
         Returns:
             ABTest: New instance of ABTest class with modified control and treatment.
         """
-        self.__check_columns(self.__dataset, 'cupac')
-        vr = VarianceReduction()
-        result_df = vr.cupac(self.__dataset,
+        self.__check_required_columns(self.__dataset, 'cupac')
+        result_df = VarianceReduction.cupac(self.__dataset,
                                target_prev=self.params.data_params.target_prev,
                                target_now=self.params.data_params.target,
                                factors_prev=self.params.data_params.predictors_prev,
@@ -642,22 +701,10 @@ class ABTest:
 
         return ABTest(result_df, params_new)
 
-    def bucketing(self):
-        """Performs bucketing in order to accelerate results computation.
-
-        Returns:
-            ABTest: New instance of ABTest class with modified control and treatment.
-        """
-        params_new = copy.deepcopy(self.params)
-        params_new.data_params.control   = self.__bucketize(self.params.data_params.control)
-        params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
-
-        return ABTest(self.__dataset, params_new)
-
     def plot(self) -> None:
         """Plot experiment.
         """
-        Graphics().plot_mean_experiment(self.params)
+        Graphics.plot_mean_experiment(self.params)
 
     def resplit_df(self):
         """Resplit dataframe.
@@ -666,8 +713,8 @@ class ABTest:
             ABTest: New instance of ABTest class with modified control and treatment.
         """
         resplit_params = ResplitParams(
-            group_col = self.params.data_params.group_col,
-            strata_col = self.params.data_params.strata_col
+            group_col=self.params.data_params.group_col,
+            strata_col=self.params.data_params.strata_col
         )
         resplitter = ResplitBuilder(self.__dataset, resplit_params)
         new_dataset = resplitter.collect()

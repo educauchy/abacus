@@ -8,17 +8,17 @@ class VarianceReduction:
     def __init__(self):
         pass
 
-    def _target_encoding(self, X: pd.DataFrame, encoding_columns:List[str], target_column:str):
-        """Encodes target column
+    def _target_encoding(self, X: pd.DataFrame, encoding_columns: List[str], target_column: str):
+        """Encodes target column.
         """
         for col in X[encoding_columns].select_dtypes(include='O').columns:
-            te=TargetEncoder()
-            X[col]=te.fit_transform(X[col],X[target_column])
+            te = TargetEncoder()
+            X[col] = te.fit_transform(X[col], X[target_column])
         return X
 
     def _predict_target(self, X: pd.DataFrame, target_prev: str,
                        factors_prev: List[str], factors_now: List[str]) -> pd.Series:
-        """ Simple linear regression for covariate prediction
+        """Covariate prediction with linear regression model.
 
         Args:
             X (pandas.DataFrame): Pandas DataFrame.
@@ -37,13 +37,13 @@ class VarianceReduction:
         X_predict = X[factors_now]
         return results.predict(X_predict)
 
-    def cupac(self, X: pd.DataFrame, target_prev: str, target_now: str,
+    @classmethod
+    def cupac(cls, X: pd.DataFrame, target_prev: str, target_now: str,
               factors_prev: List[str], factors_now: List[str], groups: str) -> pd.DataFrame:
-        """ Perform CUPAC with prediction of target column on experiment period.
+        """ Perform CUPED on target variable with covariate calculated
+        as a prediction from a linear regression model.
 
         Original paper: https://doordash.engineering/2020/06/08/improving-experimental-power-through-control-using-predictions-as-covariate-cupac/.
-
-        Previous period = before experiment, now_period = after experiment.
 
         Args:
             X (pandas.DataFrame): Pandas DataFrame for analysis.
@@ -51,19 +51,26 @@ class VarianceReduction:
             target_now (str): Target on current period column name.
             factors_prev (List[str]): Factor columns for modelling.
             factors_now (List[str]): Factor columns for prediction on current period.
-            groups (str) Groups A and B column name.
+            groups (str): Groups column name.
 
         Returns:
             pandas.DataFrame: Pandas DataFrame with additional columns: target_pred and target_now_cuped
         """
-        X = self._target_encoding(X, list(set(factors_prev+factors_now)), target_prev)
-        X.loc[:, 'target_pred'] = self._predict_target(X, target_prev, factors_prev, factors_now)
-        X_new = self.cuped(X, target_now, groups, 'target_pred')
+        X = cls._target_encoding(X, list(set(factors_prev + factors_now)), target_prev)
+        X.loc[:, 'target_pred'] = cls._predict_target(X, target_prev, factors_prev, factors_now)
+        X_new = cls.cuped(X, target_now, groups, 'target_pred')
         return X_new
 
-    def cuped(self, df: pd.DataFrame, target: str, groups: str,
-              covariate: Optional[str]) -> pd.DataFrame:
-        """ Perform CUPED on target column with known/unknown covariate.
+    @classmethod
+    def cuped(cls, df: pd.DataFrame, target: str, groups: str,
+              covariate: str) -> pd.DataFrame:
+        """ Perform CUPED on target variable with predefined covariate.
+
+        Covariate has to be chosen with regard to the following restrictions:
+
+        1. Covariate is independent of an experiment.
+        2. Covariate is highly correlated with target variable.
+        3. Covariate is continuous variable.
 
         Original paper: https://exp-platform.com/Documents/2013-02-CUPED-ImprovingSensitivityOfControlledExperiments.pdf.
 
@@ -71,7 +78,7 @@ class VarianceReduction:
             df (pandas.DataFrame): Pandas DataFrame for analysis.
             target (str): Target column name.
             groups (str): Groups A and B column name.
-            covariate (str, optional): Covariate column name. If None, then most correlated column in considered as covariate.
+            covariate (str): Covariate column name. If None, then most correlated column in considered as covariate.
 
         Returns:
             pandas.DataFrame: Pandas DataFrame with additional target CUPEDed column
