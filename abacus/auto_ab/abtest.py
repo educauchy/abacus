@@ -15,6 +15,7 @@ from abacus.resplitter.params import ResplitParams
 metric_name_typing = Union[str, Callable[[np.ndarray], Union[int, float]]]
 stat_test_typing = Dict[str, Union[int, float]]
 
+
 class ABTest:
     """Performs different calculations of A/B-test:
 
@@ -95,18 +96,18 @@ class ABTest:
         Returns:
             numpy.ndarray: Target column for a desired group.
         """
-        X = df if df is not None else self.__dataset
+        x = df if df is not None else self.__dataset
         group = np.array([])
         if self.params.hypothesis_params.metric_type == 'solid':
-            group = X.loc[X[self.params.data_params.group_col] == group_label, \
+            group = x.loc[x[self.params.data_params.group_col] == group_label,
                           self.params.data_params.target].to_numpy()
         elif self.params.hypothesis_params.metric_type == 'binary':
-            group = X.loc[X[self.params.data_params.group_col] == group_label, \
+            group = x.loc[x[self.params.data_params.group_col] == group_label,
                           self.params.data_params.target_flg].to_numpy()
         return group
 
-    def __bucketize(self, X: np.ndarray) -> np.ndarray:
-        """Split array ``X`` into N non-overlapping buckets.
+    def __bucketize(self, x: np.ndarray) -> np.ndarray:
+        """Split array ``x`` into N non-overlapping buckets.
 
         There are two purposes for this actions:
 
@@ -120,15 +121,15 @@ class ABTest:
         3. On every bucket calculate metric of interest.
 
         Args:
-            X (np.ndarray): Array to split.
+            x (np.ndarray): Array to split.
 
         Returns:
             np.ndarray: Splitted into buckets array.
         """
-        np.random.shuffle(X)
-        X_new = np.array([ self.params.hypothesis_params.metric(x)
-                           for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
-        return X_new
+        np.random.shuffle(x)
+        x_new = np.array([self.params.hypothesis_params.metric(x_)
+                    for x_ in np.array_split(x, self.params.hypothesis_params.n_buckets)])
+        return x_new
 
     def _manual_ttest(self, ctrl_mean: float, ctrl_var: float, ctrl_size: int,
                       treat_mean: float, treat_var: float, treat_size: int) -> stat_test_typing:
@@ -173,57 +174,57 @@ class ABTest:
         return result
 
     def _linearize(self) -> None:
-            X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
-            K = round(sum(X[self.params.data_params.numerator]) / sum(X[self.params.data_params.denominator]), 4)
+        x = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        k = round(sum(x[self.params.data_params.numerator]) / sum(x[self.params.data_params.denominator]), 4)
 
-            self.__dataset.loc[:, f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"] = \
-                        self.__dataset[self.params.data_params.numerator] - K * self.__dataset[self.params.data_params.denominator]
-            self.target = f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"
+        self.__dataset.loc[:, f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"] = \
+            self.__dataset[self.params.data_params.numerator] - k * self.__dataset[self.params.data_params.denominator]
+        self.target = f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"
 
-    def _delta_params(self, X: pd.DataFrame) -> Tuple[float, float]:
+    def _delta_params(self, x: pd.DataFrame) -> Tuple[float, float]:
         """ Calculated expectation and variance for ratio metric using delta approximation.
 
         Source: https://arxiv.org/pdf/1803.06336.pdf.
 
         Args:
-            X (pandas.DataFrame): Pandas DataFrame of particular group (A, B, etc).
+            x (pandas.DataFrame): Pandas DataFrame of particular group (A, B, etc).
 
         Returns:
             Tuple[float, float]: Tuple with mean and variance of ratio.
         """
-        num = X[self.params.data_params.numerator]
-        den = X[self.params.data_params.denominator]
+        num = x[self.params.data_params.numerator]
+        den = x[self.params.data_params.denominator]
         num_mean, den_mean = num.mean(), den.mean()
         num_var, den_var = num.var(), den.var()
-        cov = X[[self.params.data_params.numerator, self.params.data_params.denominator]].cov().iloc[0, 1]
+        cov = x[[self.params.data_params.numerator, self.params.data_params.denominator]].cov().iloc[0, 1]
         n = len(num)
 
         bias_correction = (den_mean / num_mean ** 3) * (num_var / n) - cov / (n * num_mean ** 2)
         mean = den_mean / num_mean - 1 + bias_correction
         var = den_var / num_mean ** 2 - 2 * (den_mean / num_mean ** 3) * cov + (den_mean ** 2 / num_mean ** 4) * num_var
 
-        return (mean, var)
+        return mean, var
 
-    def _taylor_params(self, X: pd.DataFrame) -> Tuple[float, float]:
+    def _taylor_params(self, x: pd.DataFrame) -> Tuple[float, float]:
         """ Calculated expectation and variance for ratio metric using Taylor expansion approximation.
 
         Source: https://www.stat.cmu.edu/~hseltman/files/ratio.pdf.
 
         Args:
-            X (pandas.DataFrame): Pandas DataFrame of particular group (A, B, etc).
+            x (pandas.DataFrame): Pandas DataFrame of particular group (A, B, etc).
 
         Returns:
             Tuple[float, float]: Tuple with mean and variance of ratio.
         """
-        num = X[self.params.data_params.numerator]
-        den = X[self.params.data_params.denominator]
-        mean = num.mean() / den.mean() - X[[self.params.data_params.numerator, self.params.data_params.denominator]].cov().iloc[0, 1] \
-               / (den.mean() ** 2) + den.var() * num.mean() / (den.mean() ** 3)
-        var = (num.mean() ** 2) / (den.mean() ** 2) * (num.var() / (num.mean() ** 2) - \
-                2 * X[[self.params.data_params.numerator, self.params.data_params.denominator]].cov().iloc[0, 1]) \
-                / (num.mean() * den.mean() + den.var() / (den.mean() ** 2))
+        num = x[self.params.data_params.numerator]
+        den = x[self.params.data_params.denominator]
+        mean = num.mean() / den.mean() - x[[self.params.data_params.numerator, self.params.data_params.denominator]].cov().iloc[0, 1] \
+            / (den.mean() ** 2) + den.var() * num.mean() / (den.mean() ** 3)
+        var = (num.mean() ** 2) / (den.mean() ** 2) * (num.var() / (num.mean() ** 2) - 2 *
+            x[[self.params.data_params.numerator, self.params.data_params.denominator]].cov().iloc[0, 1]) / \
+            (num.mean() * den.mean() + den.var() / (den.mean() ** 2))
 
-        return (mean, var)
+        return mean, var
 
     def bucketing(self):
         """Performs bucketing in order to accelerate results computation.
@@ -232,7 +233,7 @@ class ABTest:
             ABTest: New instance of ABTest class with modified control and treatment.
         """
         params_new = copy.deepcopy(self.params)
-        params_new.data_params.control   = self.__bucketize(self.params.data_params.control)
+        params_new.data_params.control = self.__bucketize(self.params.data_params.control)
         params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
 
         return ABTest(self.__dataset, params_new)
@@ -322,14 +323,14 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        X = self.params.data_params.control
-        Y = self.params.data_params.treatment
+        x = self.params.data_params.control
+        y = self.params.data_params.treatment
 
         metric_diffs: List[float] = []
         for _ in range(self.params.hypothesis_params.n_boot_samples):
-            x_boot = np.random.choice(X, size=X.shape[0], replace=True)
-            y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
-            metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot) )
+            x_boot = np.random.choice(x, size=x.shape[0], replace=True)
+            y_boot = np.random.choice(y, size=y.shape[0], replace=True)
+            metric_diffs.append(self.params.hypothesis_params.metric(x_boot) - self.params.hypothesis_params.metric(y_boot))
         pd_metric_diffs = pd.DataFrame(metric_diffs)
 
         left_quant = self.params.hypothesis_params.alpha / 2
@@ -345,7 +346,7 @@ class ABTest:
                 criticals[1] += 1
         false_positive = min(criticals) / pd_metric_diffs.shape[0]
 
-        test_result: int = 0 # 0 - cannot reject H0, 1 - reject H0
+        test_result: int = 0  # 0 - cannot reject H0, 1 - reject H0
         if false_positive <= self.params.hypothesis_params.alpha:
             test_result = 1
 
@@ -363,41 +364,41 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        X = self.params.data_params.control
-        Y = self.params.data_params.treatment
+        x = self.params.data_params.control
+        y = self.params.data_params.treatment
 
         metric_diffs: List[float] = []
         for _ in range(self.params.hypothesis_params.n_boot_samples):
-            x_boot = np.random.choice(X, size=X.shape[0], replace=True)
-            y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
+            x_boot = np.random.choice(x, size=x.shape[0], replace=True)
+            y_boot = np.random.choice(y, size=y.shape[0], replace=True)
             metric_diffs.append(self.params.hypothesis_params.metric(x_boot) -
-                                self.params.hypothesis_params.metric(y_boot) )
+                                self.params.hypothesis_params.metric(y_boot))
         pd_metric_diffs = pd.DataFrame(metric_diffs)
 
         boot_mean = pd_metric_diffs.mean()
         boot_std = pd_metric_diffs.std()
         zero_pvalue = norm.sf(0, loc=boot_mean, scale=boot_std)
 
-        test_result: int = 0 # 0 - cannot reject H0, 1 - reject H0
+        test_result: int = 0  # 0 - cannot reject H0, 1 - reject H0
         if self.params.hypothesis_params.alternative == 'two-sided':
             left_quant = self.params.hypothesis_params.alpha / 2
             right_quant = 1 - self.params.hypothesis_params.alpha / 2
             ci = pd_metric_diffs.quantile([left_quant, right_quant])
             ci_left, ci_right = float(ci.iloc[0]), float(ci.iloc[1])
 
-            if ci_left > 0 or ci_right < 0: # 0 is not in critical area
+            if ci_left > 0 or ci_right < 0:  # 0 is not in critical area
                 test_result = 1
         elif self.params.hypothesis_params.alternative == 'left':
             left_quant = self.params.hypothesis_params.alpha
             ci = pd_metric_diffs.quantile([left_quant])
             ci_left = float(ci.iloc[0])
-            if ci_left < 0: # o is not is critical area
+            if ci_left < 0:  # 0 is not is critical area
                 test_result = 1
         elif self.params.hypothesis_params.alternative == 'right':
             right_quant = self.params.hypothesis_params.alpha
             ci = pd_metric_diffs.quantile([right_quant])
             ci_right = float(ci.iloc[0])
-            if 0 < ci_right: # 0 is not in critical area
+            if 0 < ci_right:  # 0 is not in critical area
                 test_result = 1
 
         result = {
@@ -407,33 +408,33 @@ class ABTest:
         }
         return result
 
-    def test_boot_ratio(self, X: pd.DataFrame, Y: pd.DataFrame) -> stat_test_typing:
+    def test_boot_ratio(self, x: pd.DataFrame, y: pd.DataFrame) -> stat_test_typing:
         """Performs bootstrap for ratio-metric.
 
         Args:
-            X (pandas.DataFrame): Control group dataframe.
-            Y (pandas.DataFrame): Treatment group dataframe.
+            x (pandas.DataFrame): Control group dataframe.
+            y (pandas.DataFrame): Treatment group dataframe.
 
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        if X is None and Y is None:
-            X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
-            Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
+        if x is None and y is None:
+            x = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+            y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
-        a_metric_total = sum(X[self.params.data_params.numerator]) / sum(X[self.params.data_params.denominator])
-        b_metric_total = sum(Y[self.params.data_params.numerator]) / sum(Y[self.params.data_params.denominator])
+        a_metric_total = sum(x[self.params.data_params.numerator]) / sum(x[self.params.data_params.denominator])
+        b_metric_total = sum(y[self.params.data_params.numerator]) / sum(y[self.params.data_params.denominator])
         origin_mean = b_metric_total - a_metric_total
         boot_diffs = []
         boot_a_metric = []
         boot_b_metric = []
 
         for _ in range(self.params.hypothesis_params.n_boot_samples):
-            a_ids = X[self.params.data_params.id_col].sample(X[self.params.data_params.id_col].nunique(), replace=True)
-            b_ids = Y[self.params.data_params.id_col].sample(Y[self.params.data_params.id_col].nunique(), replace=True)
+            a_ids = x[self.params.data_params.id_col].sample(x[self.params.data_params.id_col].nunique(), replace=True)
+            b_ids = y[self.params.data_params.id_col].sample(y[self.params.data_params.id_col].nunique(), replace=True)
 
-            a_boot = X[X[self.params.data_params.id_col].isin(a_ids)]
-            b_boot = Y[Y[self.params.data_params.id_col].isin(b_ids)]
+            a_boot = x[x[self.params.data_params.id_col].isin(a_ids)]
+            b_boot = y[y[self.params.data_params.id_col].isin(b_ids)]
             a_boot_metric = sum(a_boot[self.params.data_params.numerator]) / sum(a_boot[self.params.data_params.denominator])
             b_boot_metric = sum(b_boot[self.params.data_params.numerator]) / sum(b_boot[self.params.data_params.denominator])
             boot_a_metric.append(a_boot_metric)
@@ -444,18 +445,16 @@ class ABTest:
         boot_mean = np.mean(boot_diffs)
         delta = abs(origin_mean - boot_mean)
         boot_diffs = [boot_diff + delta for boot_diff in boot_diffs]
-        delta_a = abs(a_metric_total - np.mean(boot_a_metric))
-        delta_b = abs(b_metric_total - np.mean(boot_b_metric))
 
         pd_metric_diffs = pd.DataFrame(boot_diffs)
 
-        left_quant  = self.params.hypothesis_params.alpha / 2
+        left_quant = self.params.hypothesis_params.alpha / 2
         right_quant = 1 - self.params.hypothesis_params.alpha / 2
         ci = pd_metric_diffs.quantile([left_quant, right_quant])
         ci_left, ci_right = float(ci.iloc[0]), float(ci.iloc[1])
 
-        test_result: int = 0 # 0 - cannot reject H0, 1 - reject H0
-        if ci_left > 0 or ci_right < 0: # left border of ci > 0 or right border of ci < 0
+        test_result: int = 0  # 0 - cannot reject H0, 1 - reject H0
+        if ci_left > 0 or ci_right < 0:  # left border of ci > 0 or right border of ci < 0
             test_result = 1
 
         result = {
@@ -477,23 +476,23 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        X = self.params.data_params.control
-        Y = self.params.data_params.treatment
+        x = self.params.data_params.control
+        y = self.params.data_params.treatment
 
-        T: int = 0
+        t_calc: int = 0
         for _ in range(self.params.hypothesis_params.n_boot_samples):
-            x_boot = np.random.choice(X, size=X.shape[0], replace=True)
-            y_boot = np.random.choice(Y, size=Y.shape[0], replace=True)
+            x_boot = np.random.choice(x, size=x.shape[0], replace=True)
+            y_boot = np.random.choice(y, size=y.shape[0], replace=True)
 
-            T_boot = (np.mean(x_boot) - np.mean(y_boot)) / (np.var(x_boot) / x_boot.shape[0] + np.var(y_boot) / y_boot.shape[0])
+            t_boot = (np.mean(x_boot) - np.mean(y_boot)) / (np.var(x_boot) / x_boot.shape[0] + np.var(y_boot) / y_boot.shape[0])
             test_res = ttest_ind(x_boot, y_boot, equal_var=False, alternative=self.params.hypothesis_params.alternative)
 
-            if T_boot >= test_res[1]:
-                T += 1
+            if t_boot >= test_res[1]:
+                t_calc += 1
 
-        pvalue = T / self.params.hypothesis_params.n_boot_samples
+        pvalue = t_calc / self.params.hypothesis_params.n_boot_samples
 
-        test_result: int = 0 # 0 - cannot reject H0, 1 - reject H0
+        test_result: int = 0  # 0 - cannot reject H0, 1 - reject H0
         if pvalue <= self.params.hypothesis_params.alpha:
             test_result = 1
 
@@ -510,25 +509,25 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        X = self.params.data_params.control
-        Y = self.params.data_params.treatment
+        x = self.params.data_params.control
+        y = self.params.data_params.treatment
 
-        np.random.shuffle(X)
-        np.random.shuffle(Y)
-        X_new = np.array([ self.params.hypothesis_params.metric(x)
-                           for x in np.array_split(X, self.params.hypothesis_params.n_buckets) ])
-        Y_new = np.array([ self.params.hypothesis_params.metric(y)
-                           for y in np.array_split(Y, self.params.hypothesis_params.n_buckets) ])
+        np.random.shuffle(x)
+        np.random.shuffle(y)
+        x_new = np.array([self.params.hypothesis_params.metric(x)
+                          for x in np.array_split(x, self.params.hypothesis_params.n_buckets)])
+        y_new = np.array([self.params.hypothesis_params.metric(y)
+                          for y in np.array_split(y, self.params.hypothesis_params.n_buckets)])
 
         test_result: int = 0
-        if (shapiro(X_new).pvalue >= self.params.hypothesis_params.alpha) \
-                and (shapiro(Y_new).pvalue >= self.params.hypothesis_params.alpha):
-            stat, pvalue = ttest_ind(X_new, Y_new, equal_var=False, alternative=self.params.hypothesis_params.alternative)
+        if (shapiro(x_new).pvalue >= self.params.hypothesis_params.alpha) \
+                and (shapiro(y_new).pvalue >= self.params.hypothesis_params.alpha):
+            stat, pvalue = ttest_ind(x_new, y_new, equal_var=False, alternative=self.params.hypothesis_params.alternative)
             if pvalue <= self.params.hypothesis_params.alpha:
                 test_result = 1
         else:
-            def metric(X: np.array):
-                modes, _ = mode(X)
+            def metric(arr: np.array):
+                modes, _ = mode(arr)
                 return sum(modes) / len(modes)
             self.params.hypothesis_params.metric = metric
             stat, pvalue, test_result = self.test_boot_confint()
@@ -546,11 +545,11 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        X = self.__get_group(self.params.data_params.control_name, self.dataset)
-        Y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
+        x = self.__get_group(self.params.data_params.control_name, self.dataset)
+        y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
-        observed = np.array([sum(Y) , len(Y) - sum(Y)])
-        expected = np.array([sum(X) , len(X) - sum(X)])
+        observed = np.array([sum(y), len(y) - sum(y)])
+        expected = np.array([sum(x), len(x) - sum(x)])
         stat, pvalue = chisquare(observed, expected)
 
         test_result: int = 0
@@ -572,13 +571,13 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
-        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
+        x = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
-        A_mean, A_var = self._delta_params(X)
-        B_mean, B_var = self._delta_params(Y)
+        ctrl_mean, ctrl_var = self._delta_params(x)
+        treat_mean, treat_var = self._delta_params(y)
 
-        return self._manual_ttest(A_mean, A_var, X.shape[0], B_mean, B_var, Y.shape[0])
+        return self._manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
 
     def test_mannwhitney(self) -> stat_test_typing:
         """Performs Mann-Whitney test.
@@ -595,15 +594,15 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        X = self.params.data_params.control
-        Y = self.params.data_params.treatment
+        x = self.params.data_params.control
+        y = self.params.data_params.treatment
 
         if self.params.hypothesis_params.metric_name != 'median':
             warnings.warn('Metric of the test is {}, \
                         but you use mann-whitney test with it'.format(self.params.hypothesis_params.metric_name))
 
         test_result: int = 0
-        stat, pvalue = mannwhitneyu(X, Y, alternative=self.params.hypothesis_params.alternative)
+        stat, pvalue = mannwhitneyu(x, y, alternative=self.params.hypothesis_params.alternative)
 
         if pvalue <= self.params.hypothesis_params.alpha:
             test_result = 1
@@ -622,20 +621,20 @@ class ABTest:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
         metric_diffs: List[float] = []
-        X = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
-        Y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
+        x = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
         for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_strata_metric = 0
             y_strata_metric = 0
             for strat in self.params.hypothesis_params.strata_weights.keys():
-                X_strata = X.loc[X[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
-                Y_strata = Y.loc[Y[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
+                x_strata = x.loc[x[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
+                y_strata = y.loc[y[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
                 x_strata_metric += (self.params.hypothesis_params
-                                    .metric(np.random.choice(X_strata, size=X_strata.shape[0] // 2, replace=False)) *
+                                    .metric(np.random.choice(x_strata, size=x_strata.shape[0] // 2, replace=False)) *
                                     self.params.hypothesis_params.strata_weights[strat])
                 y_strata_metric += (self.params.hypothesis_params
-                                    .metric(np.random.choice(Y_strata, size=Y_strata.shape[0] // 2, replace=False)) *
+                                    .metric(np.random.choice(y_strata, size=y_strata.shape[0] // 2, replace=False)) *
                                     self.params.hypothesis_params.strata_weights[strat])
             metric_diffs.append(self.params.hypothesis_params.metric(x_strata_metric) - self.params.hypothesis_params.metric(y_strata_metric))
         pd_metric_diffs = pd.DataFrame(metric_diffs)
@@ -645,8 +644,8 @@ class ABTest:
         ci = pd_metric_diffs.quantile([left_quant, right_quant])
         ci_left, ci_right = float(ci.iloc[0]), float(ci.iloc[1])
 
-        test_result: int = 0 # 0 - cannot reject H0, 1 - reject H0
-        if ci_left > 0 or ci_right < 0: # left border of ci > 0 or right border of ci < 0
+        test_result: int = 0  # 0 - cannot reject H0, 1 - reject H0
+        if ci_left > 0 or ci_right < 0:  # left border of ci > 0 or right border of ci < 0
             test_result = 1
 
         result = {
@@ -664,13 +663,13 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        X = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
-        Y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
+        x = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
-        A_mean, A_var = self._taylor_params(X)
-        B_mean, B_var = self._taylor_params(Y)
+        ctrl_mean, ctrl_var = self._taylor_params(x)
+        treat_mean, treat_var = self._taylor_params(y)
 
-        return self._manual_ttest(A_mean, A_var, X.shape[0], B_mean, B_var, Y.shape[0])
+        return self._manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
 
     def test_welch(self) -> stat_test_typing:
         """Performs Welch's t-test.
@@ -678,11 +677,12 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        X = self.params.data_params.control
-        Y = self.params.data_params.treatment
+        x = self.params.data_params.control
+        y = self.params.data_params.treatment
 
-        normality_passed = (shapiro(X).pvalue >= self.params.hypothesis_params.alpha) \
-                           and (shapiro(Y).pvalue >= self.params.hypothesis_params.alpha)
+        normality_passed = (shapiro(x).pvalue >= self.params.hypothesis_params.alpha) \
+            and (shapiro(y).pvalue >= self.params.hypothesis_params.alpha)
+
         if not normality_passed:
             warnings.warn('One or both distributions are not normally distributed')
         if self.params.hypothesis_params.metric_name != 'mean':
@@ -690,7 +690,7 @@ class ABTest:
                         but you use t-test with it'.format(self.params.hypothesis_params.metric_name))
 
         test_result: int = 0
-        stat, pvalue = ttest_ind(X, Y, equal_var=False, alternative=self.params.hypothesis_params.alternative)
+        stat, pvalue = ttest_ind(x, y, equal_var=False, alternative=self.params.hypothesis_params.alternative)
 
         if pvalue <= self.params.hypothesis_params.alpha:
             test_result = 1
@@ -715,11 +715,11 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        X = self.__get_group(self.params.data_params.control_name, self.dataset)
-        Y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
+        x = self.__get_group(self.params.data_params.control_name, self.dataset)
+        y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
-        count = np.array([sum(X) , sum(Y)])
-        nobs  = np.array([len(X), len(Y)])
+        count = np.array([sum(x), sum(y)])
+        nobs = np.array([len(x), len(y)])
         stat, pvalue = proportions_ztest(count, nobs)
 
         test_result: int = 0

@@ -1,4 +1,3 @@
-from typing import List, Union
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -74,20 +73,20 @@ class Graphics:
 
     @classmethod
     def plot_bootstrap_confint(cls,
-                               X: np.array,
+                               x: np.array,
                                params: ABTestParams) -> None:
         """Plot bootstrapped metric of an experiment with its confidence
         interval and zero value.
 
         Args:
-            X (np.array): Bootstrap metric.
+            x (np.array): Bootstrap metric.
             params (ABTestParams): Parameters of the experiment.
         """
         bins = 100
-        ci_left, ci_right = np.quantile(X, params.hypothesis_params.alpha / 2), \
-                            np.quantile(X, 1 - params.hypothesis_params.alpha / 2)
+        ci_left, ci_right = np.quantile(x, params.hypothesis_params.alpha / 2), \
+            np.quantile(x, 1 - params.hypothesis_params.alpha / 2)
         fig, ax = plt.subplots(figsize=(20, 12))
-        ax.hist(X, bins, alpha=0.5, label='Differences in metric', color='Red')
+        ax.hist(x, bins, alpha=0.5, label='Differences in metric', color='Red')
         ax.axvline(x=0, color='Red', label='No difference')
         ax.vlines([ci_left, ci_right], ymin=0, ymax=100, linestyle='--', label='Confidence interval')
         ax.legend()
