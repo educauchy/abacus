@@ -7,13 +7,14 @@ from abacus.auto_ab.abtest import ABTest
 from abacus.auto_ab.params import ABTestParams, DataParams, HypothesisParams
 
 
-POSSIBLE_TESTS = [ABTest.test_hypothesis_boot_confint, 
-                ABTest.test_hypothesis_boot_est,
-                ABTest.test_hypothesis_strat_confint,
-                ABTest.test_hypothesis_mannwhitney,
-                ABTest.test_hypothesis_ttest,
-                ABTest.delta_method,
-                ABTest.taylor_method,
+POSSIBLE_TESTS = [
+                ABTest.test_boot_confint,
+                ABTest.test_boot_fp,
+                ABTest.test_delta_ratio,
+                ABTest.test_mannwhitney,
+                ABTest.test_strat_confint,
+                ABTest.test_taylor_ratio,
+                ABTest.test_welch,
             ]
 
 

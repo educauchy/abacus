@@ -13,13 +13,20 @@ class ParallelExperiments:
         self.n_buckets = n_buckets
 
     def _modulo(self):
-        """ Creates buckets using module approach
+        """ Creates buckets using modulo approach.
         """
-        self.dataset['bucket_id'] = np.remainder( self.dataset[self.id_col].to_numpy(),
-                                                  self.n_buckets)
+        self.dataset['bucket_id'] = np.remainder(self.dataset[self.id_col].to_numpy(),
+                                                 self.n_buckets)
 
-    def _hashing(self, hash_func: Optional[str] = None, salt: Optional[str] = None):
-        """ Creates buckets using hash function approach
+    def _hashing(self, salt: str, hash_func: Optional[str] = 'blake2b'):
+        """ Creates buckets using hash function approach.
+
+        Algorithm:
+
+        1. Create hash function with predefined salt.
+        2. Hash every value of initial array.
+        3. Consider number as hex16 format.
+        4. Calculate bucket id as modulo of hex16 number divided by number of buckets.
 
         Args:
             hash_func (str, optional): Hash function.
@@ -28,12 +35,18 @@ class ParallelExperiments:
         if salt is None:
             salt = secrets.token_hex(8)
         salt: bytes = bytes(salt, 'utf-8')
-        hasher = hashlib.blake2b(salt=salt)
+
+        if hash_func == 'blake2b':
+            hasher = hashlib.blake2b(salt=salt)
+        elif hash_func == 'blake2s':
+            hasher = hashlib.blake2s(salt=salt)
+        else:
+            hasher = hashlib.blake2b(salt=salt)
 
         bucket_ids: np.array = np.array([])
         ids: np.array = self.dataset[self.id_col].to_numpy()
-        for id in ids:
-            hasher.update( bytes(str(id), 'utf-8') )
+        for id_ in ids:
+            hasher.update(bytes(str(id_), 'utf-8'))
             bucket_id = int(hasher.hexdigest(), 16) % self.dataset.n_buckets
             bucket_ids = np.append(bucket_ids, bucket_id)
 
