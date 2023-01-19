@@ -181,7 +181,7 @@ class ABTest:
         return result
 
     def _delta_params(self, x: pd.DataFrame) -> Tuple[float, float]:
-        """ Calculated expectation and variance for ratio metric using delta approximation.
+        """Calculated expectation and variance for ratio metric using delta approximation.
 
         Source: https://arxiv.org/pdf/1803.06336.pdf.
 
@@ -455,7 +455,6 @@ class ABTest:
         boot_mean = np.mean(boot_diffs)
         delta = abs(origin_mean - boot_mean)
         boot_diffs = [boot_diff + delta for boot_diff in boot_diffs]
-
         pd_metric_diffs = pd.DataFrame(boot_diffs)
 
         left_quant = self.params.hypothesis_params.alpha / 2

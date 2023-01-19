@@ -4,7 +4,9 @@ Welcome to ABacus documentation!
 .. shields start
 
 |PyPI| |PyPI License| |ReadTheDocs| |Python Versions|
+=======
 
+|PyPI| |PyPI License| |ReadTheDocs|
 .. |PyPI| image:: https://img.shields.io/pypi/v/abacus
     :target: https://pypi.org/project/abacus
 .. |PyPI License| image:: https://img.shields.io/pypi/l/abacus.svg
@@ -15,12 +17,6 @@ Welcome to ABacus documentation!
     :target: https://pypi.org/project/abacus
 
 .. shields end
-
-.. image:: https://raw.githubusercontent.com/educauchy/abacus/main/docs/source/_static/abacus.png
-   :height: 320 px
-   :width: 320 px
-   :align: center
-
 
 **ABacus** is a Python library developed for A/B experimentation and testing.
 It includes versatile instruments for different experimentation tasks like
