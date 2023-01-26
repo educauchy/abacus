@@ -36,7 +36,7 @@ class MdeParams:
     variance_reduction: Optional[Callable[[ABTest], ABTest]] = None
     use_buckets: bool = False
     transformations: Any = None
-    stat_test: Callable[[ABTest], Dict[str, Union[int, float] ]] = ABTest.test_hypothesis_boot_confint
+    stat_test: Callable[[ABTest], Dict[str, Union[int, float] ]] = ABTest.test_boot_confint
     iterations_number: int = 10
     max_beta_score: float = 0.2
     min_beta_score: float = 0.05
@@ -58,14 +58,14 @@ class MdeParams:
     @validator("stat_test", always=True)
     @classmethod
     def alternative_validator(cls, stat_test):
-        assert stat_test in [ABTest.test_hypothesis_boot_confint, 
-                             ABTest.test_hypothesis_boot_est,
-                             ABTest.test_hypothesis_strat_confint,
-                             ABTest.test_hypothesis_mannwhitney,
-                             ABTest.test_hypothesis_ttest,
-                             ABTest.delta_method,
-                             ABTest.taylor_method,
-                             ABTest.ratio_bootstrap
+        assert stat_test in [ABTest.test_boot_confint,
+                             ABTest.test_boot_fp,
+                             ABTest.test_strat_confint,
+                             ABTest.test_mannwhitney,
+                             ABTest.test_welch,
+                             ABTest.test_delta_ratio,
+                             ABTest.test_taylor_ratio,
+                             ABTest.test_boot_ratio
                             ]
         return stat_test
 

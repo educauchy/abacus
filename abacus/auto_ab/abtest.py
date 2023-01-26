@@ -235,6 +235,8 @@ class ABTest:
         params_new.data_params.control = self.__bucketize(self.params.data_params.control)
         params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
 
+        print(params_new)
+
         return ABTest(self.__dataset, params_new)
 
     def cuped(self):
