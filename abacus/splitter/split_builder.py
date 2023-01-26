@@ -166,9 +166,9 @@ class SplitBuilder:
                 ab_test = ABTest(df_with_groups, ab_params)
 
                 if column in self.params.cols: 
-                    test_result = ab_test.test_hypothesis_ttest()
+                    test_result = ab_test.test_welch()
                 else:
-                    test_result = ab_test.test_hypothesis_ztest_prop()
+                    test_result = ab_test.test_z_proportions()
                 tests_results[column] = test_result['p-value'].round(4)
 
             result = pd.DataFrame(tests_results, index=["1"])
