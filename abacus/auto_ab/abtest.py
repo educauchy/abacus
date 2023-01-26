@@ -235,8 +235,6 @@ class ABTest:
         params_new.data_params.control = self.__bucketize(self.params.data_params.control)
         params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
 
-        print(params_new)
-
         return ABTest(self.__dataset, params_new)
 
     def cuped(self):
@@ -721,6 +719,7 @@ class ABTest:
         r"""Performs z-test for proportions.
 
         The two-proportions z-test is used to compare two observed proportions.
+<<<<<<< HEAD
 
         Statistic of the test:
 
@@ -733,6 +732,20 @@ class ABTest:
         x = self.__get_group(self.params.data_params.control_name, self.dataset)
         y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
+=======
+
+        Statistic of the test:
+
+        .. math::
+            Z = \frac{\hat{p}_1 - \hat{p}_2}{\sqrt{\hat{p}(1-\hat{p})(\frac{1}{n_1} + \frac{1}{n_2})}}.
+
+        Returns:
+            stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
+        """
+        x = self.__get_group(self.params.data_params.control_name, self.dataset)
+        y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
+
+>>>>>>> main
         count = np.array([sum(x), sum(y)])
         nobs = np.array([len(x), len(y)])
         stat, pvalue = proportions_ztest(count, nobs)
