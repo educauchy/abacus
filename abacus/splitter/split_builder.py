@@ -129,8 +129,12 @@ class SplitBuilder:
                                 .isin(group_map[self.params.id_col].values)]
                                 .copy()
             )
-            group_frac_to_take = min(group_size / len(available_id), 1)
-
+            
+            try:
+                group_frac_to_take = min(group_size / len(available_id), 1)
+            except ZeroDivisionError:
+                group_frac_to_take = 1
+                
             groups = (
                 available_id
                 .groupby("strata", group_keys=False)

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from typing import Dict, Union, Optional, Callable, Tuple, List
 import copy
 import warnings
@@ -13,7 +14,7 @@ from abacus.resplitter.params import ResplitParams
 
 
 metric_name_typing = Union[str, Callable[[np.ndarray], Union[int, float]]]
-stat_test_typing = Dict[str, Union[int, float]]
+stat_test_typing = Dict[str, Optional[Union[int, float]]]
 
 
 class ABTest:
@@ -34,16 +35,18 @@ class ABTest:
                  params: ABTestParams
                  ) -> None:
         self.params = params
-        self.__check_required_columns(dataset, 'init')
         self.__dataset = dataset
-        self.params.data_params.control = self.__get_group(self.params.data_params.control_name, self.dataset)
-        self.params.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, self.dataset)
+        
+        if dataset is not None:
+            self.__check_required_columns(dataset, 'init')
+            self.params.data_params.control = self.__get_group(self.params.data_params.control_name, self.dataset)
+            self.params.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
     @property
-    def dataset(self):
+    def dataset(self) -> pd.DataFrame:
         return self.__dataset
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"ABTest(alpha={self.params.hypothesis_params.alpha}, " \
                f"beta={self.params.hypothesis_params.beta}, " \
                f"alternative='{self.params.hypothesis_params.alternative}')"
@@ -225,19 +228,24 @@ class ABTest:
 
         return mean, var
 
-    def bucketing(self):
+    def bucketing(self) -> ABTest:
         """Performs bucketing in order to accelerate results computation.
 
         Returns:
             ABTest: New instance of ``ABTest`` class with modified control and treatment.
         """
+        dataset_new = copy.deepcopy(self.__dataset)
         params_new = copy.deepcopy(self.params)
+        
         params_new.data_params.control = self.__bucketize(self.params.data_params.control)
         params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
+        
+        dataset_new.control = params_new.data_params.control
+        dataset_new.treatment = params_new.data_params.treatment
 
-        return ABTest(self.__dataset, params_new)
+        return ABTest(None, params_new)
 
-    def cuped(self):
+    def cuped(self) -> ABTest:
         """Performs CUPED for variance reduction.
 
         Returns:
@@ -255,7 +263,7 @@ class ABTest:
 
         return ABTest(result_df, params_new)
 
-    def cupac(self):
+    def cupac(self) -> ABTest:
         """Performs CUPAC for variance reduction.
 
         Returns:
@@ -307,12 +315,18 @@ class ABTest:
         - hypothesis_params.metric_name
         - hypothesis_params.strategy
         """
-        if self.params.hypothesis_params.metric_name == 'mean':
-            Graphics.plot_mean_experiment(self.params)
-        elif self.params.hypothesis_params.metric_name == 'median':
-            Graphics.plot_median_experiment(self.params)
+        if self.params.hypothesis_params.metric_type == 'solid':
+            if self.params.hypothesis_params.metric_name == 'mean' \
+                or self.params.hypothesis_params.metric == 'mean':
+                Graphics.plot_mean_experiment(self.params)
+            elif self.params.hypothesis_params.metric_name == 'median' \
+                or self.params.hypothesis_params.metric == 'median':
+                Graphics.plot_median_experiment(self.params)
 
-    def resplit_df(self):
+        if self.params.hypothesis_params.metric_type == 'binary':
+            Graphics.plot_binary_experiment(self.params)
+
+    def resplit_df(self) -> ABTest:
         """Resplit dataframe.
 
         Returns:
@@ -387,7 +401,7 @@ class ABTest:
 
         boot_mean = pd_metric_diffs.mean()
         boot_std = pd_metric_diffs.std()
-        zero_pvalue = norm.sf(0, loc=boot_mean, scale=boot_std)
+        zero_pvalue = norm.sf(0, loc=boot_mean, scale=boot_std)[0]
 
         test_result: int = 0  # 0 - cannot reject H0, 1 - reject H0
         if self.params.hypothesis_params.alternative == 'two-sided':
@@ -418,19 +432,14 @@ class ABTest:
         }
         return result
 
-    def test_boot_ratio(self, x: pd.DataFrame, y: pd.DataFrame) -> stat_test_typing:
+    def test_boot_ratio(self) -> stat_test_typing:
         """Performs bootstrap for ratio-metric.
-
-        Args:
-            x (pandas.DataFrame): Control group dataframe.
-            y (pandas.DataFrame): Treatment group dataframe.
 
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        if x is None and y is None:
-            x = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
-            y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
+        x = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
         a_metric_total = sum(x[self.params.data_params.numerator]) / sum(x[self.params.data_params.denominator])
         b_metric_total = sum(y[self.params.data_params.numerator]) / sum(y[self.params.data_params.denominator])
@@ -540,10 +549,10 @@ class ABTest:
                 modes, _ = mode(arr)
                 return sum(modes) / len(modes)
             self.params.hypothesis_params.metric = metric
-            stat, pvalue, test_result = self.test_boot_confint()
+            _, pvalue, test_result = self.test_boot_confint()
 
         result = {
-            'stat': stat,
+            'stat': None,
             'p-value': pvalue,
             'result': test_result
         }
@@ -643,13 +652,14 @@ class ABTest:
             for strat in self.params.hypothesis_params.strata_weights.keys():
                 x_strata = x.loc[x[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
                 y_strata = y.loc[y[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
-                x_strata_metric += (self.params.hypothesis_params
-                                    .metric(np.random.choice(x_strata, size=x_strata.shape[0] // 2, replace=False)) *
+                x_strata_metric += (self.params.hypothesis_params.metric(
+                                        np.random.choice(x_strata, size=x_strata.shape[0] // 2, replace=False)) *
                                     self.params.hypothesis_params.strata_weights[strat])
-                y_strata_metric += (self.params.hypothesis_params
-                                    .metric(np.random.choice(y_strata, size=y_strata.shape[0] // 2, replace=False)) *
+                y_strata_metric += (self.params.hypothesis_params.metric(
+                                        np.random.choice(y_strata, size=y_strata.shape[0] // 2, replace=False)) *
                                     self.params.hypothesis_params.strata_weights[strat])
-            metric_diffs.append(self.params.hypothesis_params.metric(x_strata_metric) - self.params.hypothesis_params.metric(y_strata_metric))
+            iter_diff = self.params.hypothesis_params.metric(x_strata_metric) - self.params.hypothesis_params.metric(y_strata_metric)
+            metric_diffs.append(iter_diff)
         pd_metric_diffs = pd.DataFrame(metric_diffs)
 
         left_quant = self.params.hypothesis_params.alpha / 2
