@@ -38,9 +38,14 @@ class Graphics:
         a_mean = np.mean(params.data_params.control)
         b_mean = np.mean(params.data_params.treatment)
         # threshold = np.quantile(params.data_params.control, 0.975)
+        
+        control_dist_height, _ = np.histogram(params.data_params.control, bins=bins)
+        treatment_dist_height, _ = np.histogram(params.data_params.treatment, bins=bins)
+        hist_height = max(max(control_dist_height), max(treatment_dist_height))
+        
         fig, ax = plt.subplots(figsize=(20, 12))
-        ax.text(a_mean, 100, 'H0', fontweight='bold', color='white', fontsize='xx-large')
-        ax.text(b_mean, 100, 'H1', fontweight='bold', color='white', fontsize='xx-large')
+        ax.text(a_mean, hist_height // 2, 'H0', fontweight='bold', color='white', fontsize='xx-large')
+        ax.text(b_mean, hist_height // 2, 'H1', fontweight='bold', color='white', fontsize='xx-large')
         ax.hist(params.data_params.control, bins, alpha=0.5, label='Control', color='Red')
         ax.hist(params.data_params.treatment, bins, alpha=0.5, label='Treatment', color='Blue')
         ax.axvline(x=a_mean, linewidth=2, color='Red')

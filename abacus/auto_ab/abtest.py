@@ -35,10 +35,12 @@ class ABTest:
                  params: ABTestParams
                  ) -> None:
         self.params = params
-        self.__check_required_columns(dataset, 'init')
         self.__dataset = dataset
-        self.params.data_params.control = self.__get_group(self.params.data_params.control_name, self.dataset)
-        self.params.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, self.dataset)
+        
+        if dataset is not None:
+            self.__check_required_columns(dataset, 'init')
+            self.params.data_params.control = self.__get_group(self.params.data_params.control_name, self.dataset)
+            self.params.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
     @property
     def dataset(self) -> pd.DataFrame:
@@ -232,11 +234,16 @@ class ABTest:
         Returns:
             ABTest: New instance of ``ABTest`` class with modified control and treatment.
         """
+        dataset_new = copy.deepcopy(self.__dataset)
         params_new = copy.deepcopy(self.params)
+        
         params_new.data_params.control = self.__bucketize(self.params.data_params.control)
         params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
+        
+        dataset_new.control = params_new.data_params.control
+        dataset_new.treatment = params_new.data_params.treatment
 
-        return ABTest(self.__dataset, params_new)
+        return ABTest(None, params_new)
 
     def cuped(self) -> ABTest:
         """Performs CUPED for variance reduction.
