@@ -60,12 +60,14 @@ class MdeParams:
     def alternative_validator(cls, stat_test):
         assert stat_test in [ABTest.test_boot_confint,
                              ABTest.test_boot_fp,
+                             ABTest.test_boot_welch,
+                             ABTest.test_boot_ratio,
                              ABTest.test_strat_confint,
                              ABTest.test_mannwhitney,
                              ABTest.test_welch,
                              ABTest.test_delta_ratio,
                              ABTest.test_taylor_ratio,
-                             ABTest.test_boot_ratio
+                             ABTest.test_z_proportions,
                             ]
         return stat_test
 

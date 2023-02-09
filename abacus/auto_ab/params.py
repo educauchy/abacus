@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Tuple, Any, Callable, Union
+from typing import List, Tuple, Any, Callable, Union, Optional
 from pydantic.dataclasses import dataclass
 from pydantic import validator, Field
 import numpy as np
@@ -10,13 +10,11 @@ class ValidationConfig:
 
 @dataclass(config=ValidationConfig)
 class DataParams:
-    n_rows: int = 500
-    path: str = '../notebooks/ab_data.csv'
     id_col: str = 'id'
     group_col: str = 'groups'
     control_name: str = 'A'
     treatment_name: str = 'B'
-    strata_col: str = 'country'
+    strata_col: Optional[str] = 'country'
     target: str = 'height_now'
     target_flg: str = 'bought'
     predictors: List[str] = Field(default=['weight_now'])
@@ -25,66 +23,56 @@ class DataParams:
     covariate: str = 'height_prev'
     target_prev: str = 'height_prev'
     predictors_prev: List[str] = Field(default=['weight_prev'])
-    cluster_col: str = 'cluster_id'
-    clustering_cols: List[str] = Field(default=['col1'])
     is_grouped: bool = True
-    control: np.ndarray = np.array([])
-    treatment: np.ndarray = np.array([])
+    control: Optional[np.ndarray] = np.array([])
+    treatment: Optional[np.ndarray] = np.array([])
 
 @dataclass(config=ValidationConfig)
 class HypothesisParams:
     alpha: float = 0.05
     beta: float = 0.2
-    alternative: str = 'two-sided' # less, greater, two-sided
-    split_ratios: Tuple[float, float]= Field(default=(0.5, 0.5))
-    strategy: str = 'simple_test'
-    strata: str = 'country'
-    strata_weights: dict = Field(default={1: 0.8, 2: 0.2})
+    alternative: str = 'two-sided'  # less, greater, two-sided
+    strata: Optional[str] = 'country'
+    strata_weights: Optional[dict] = Field(default={1: 0.8, 2: 0.2})
     metric_type: str = 'solid'
     metric_name: str = 'mean'
     metric: Union[Callable[[Any], Union[int,float]], str] = np.mean
-    n_boot_samples: int = 200
-    n_buckets: int = 50
+    n_boot_samples: Optional[int] = 200
+    n_buckets: Optional[int] = 50
 
     def __post_init__(self):
-        if type(self.metric)==str:
-            if self.metric=='mean':
-                self.metric=np.mean
-            if self.metric=='median':
-                self.metric=np.median
+        if type(self.metric) == str:
+            if self.metric == 'mean':
+                self.metric = np.mean
+            if self.metric == 'median':
+                self.metric = np.median
 
     @validator("alpha", always=True)
     @classmethod
-    def alpha_validator(cls, alpha: float):
+    def alpha_validator(cls, alpha: float) -> float:
         assert 1 > alpha > 0
         return alpha
-    
+
     @validator("beta", always=True)
     @classmethod
-    def beta_validator(cls, beta: float):
+    def beta_validator(cls, beta: float) -> float:
         assert 1 > beta > 0
         return beta
 
     @validator("alternative", always=True)
     @classmethod
-    def alternative_validator(cls, alternative: float):
+    def alternative_validator(cls, alternative: str) -> str:
         assert alternative in ['two-sided', 'less', 'greater']
         return alternative
-    
-    @validator("split_ratios", always=True)
-    @classmethod
-    def split_validator(cls, split_ratios: float):
-        assert len(split_ratios)==2
-        assert sum(split_ratios)==1.0
-        return split_ratios
 
     @validator("metric", always=True)
     @classmethod
-    def metric_validator(cls, metric: float):
-        if type(metric)==str:
+    def metric_validator(cls,
+                         metric: Union[Callable[[Any], Union[int,float]], str]) -> str:
+        if type(metric) == str:
             assert metric in ['mean', 'median']
             return metric
-        else: 
+        else:
             return metric
 
 @dataclass

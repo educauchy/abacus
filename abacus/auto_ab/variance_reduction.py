@@ -5,11 +5,11 @@ from category_encoders.target_encoder import TargetEncoder
 
 
 class VarianceReduction:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     @staticmethod
-    def _target_encoding(x: pd.DataFrame, encoding_columns: List[str], target_column: str):
+    def _target_encoding(x: pd.DataFrame, encoding_columns: List[str], target_column: str) -> pd.DataFrame:
         """Encodes target column.
         """
         for col in x[encoding_columns].select_dtypes(include='O').columns:
