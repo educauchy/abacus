@@ -167,11 +167,11 @@ class ABTest:
                        t.ppf(1.0 - self.params.hypothesis_params.alpha / 2, df)
             if not (lcv < t_stat_empirical < rcv):
                 test_result = 1
-        elif self.params.hypothesis_params.alternative == 'left':
+        elif self.params.hypothesis_params.alternative == 'less':
             lcv = t.ppf(self.params.hypothesis_params.alpha, df)
             if t_stat_empirical < lcv:
                 test_result = 1
-        elif self.params.hypothesis_params.alternative == 'right':
+        elif self.params.hypothesis_params.alternative == 'greater':
             rcv = t.ppf(1 - self.params.hypothesis_params.alpha, df)
             if t_stat_empirical > rcv:
                 test_result = 1
@@ -412,13 +412,13 @@ class ABTest:
 
             if ci_left > 0 or ci_right < 0:  # 0 is not in critical area
                 test_result = 1
-        elif self.params.hypothesis_params.alternative == 'left':
+        elif self.params.hypothesis_params.alternative == 'less':
             left_quant = self.params.hypothesis_params.alpha
             ci = pd_metric_diffs.quantile([left_quant])
             ci_left = float(ci.iloc[0])
             if ci_left < 0:  # 0 is not is critical area
                 test_result = 1
-        elif self.params.hypothesis_params.alternative == 'right':
+        elif self.params.hypothesis_params.alternative == 'greater':
             right_quant = self.params.hypothesis_params.alpha
             ci = pd_metric_diffs.quantile([right_quant])
             ci_right = float(ci.iloc[0])
@@ -504,7 +504,7 @@ class ABTest:
             y_boot = np.random.choice(y, size=y.shape[0], replace=True)
 
             t_boot = (np.mean(x_boot) - np.mean(y_boot)) / (np.var(x_boot) / x_boot.shape[0] + np.var(y_boot) / y_boot.shape[0])
-            test_res = ttest_ind(x_boot, y_boot, equal_var=False, alternative=self.params.hypothesis_params.alternative)
+            test_res = ttest_ind(y_boot, x_boot, equal_var=False, alternative=self.params.hypothesis_params.alternative)
 
             if t_boot >= test_res[1]:
                 t_calc += 1
@@ -541,7 +541,7 @@ class ABTest:
         test_result: int = 0
         if (shapiro(x_new).pvalue >= self.params.hypothesis_params.alpha) \
                 and (shapiro(y_new).pvalue >= self.params.hypothesis_params.alpha):
-            stat, pvalue = ttest_ind(x_new, y_new, equal_var=False, alternative=self.params.hypothesis_params.alternative)
+            stat, pvalue = ttest_ind(y_new, x_new, equal_var=False, alternative=self.params.hypothesis_params.alternative)
             if pvalue <= self.params.hypothesis_params.alpha:
                 test_result = 1
         else:
@@ -713,7 +713,7 @@ class ABTest:
                         but you use t-test with it'.format(self.params.hypothesis_params.metric_name))
 
         test_result: int = 0
-        stat, pvalue = ttest_ind(x, y, equal_var=False, alternative=self.params.hypothesis_params.alternative)
+        stat, pvalue = ttest_ind(y, x, equal_var=False, alternative=self.params.hypothesis_params.alternative)
 
         if pvalue <= self.params.hypothesis_params.alpha:
             test_result = 1

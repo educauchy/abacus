@@ -13,10 +13,10 @@ Stable version is released on every tag to ``main`` branch.
 **Note**: Abacus requires Python 3.7+.
 
 
-Prepilot
+MDE Explorer
 --------
 
-The main goal of prepilot usage is to simulate real experiment
+The main goal of MDE explorer is to simulate real experiment
 and to choose necessary parameters of experiment, e.g. type I/II errors,
 sample size, effect size.
 

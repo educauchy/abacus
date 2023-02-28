@@ -91,18 +91,3 @@ ParallelExperiments
 
 .. autofunction:: abacus.auto_ab.ParallelExperiments._modulo
 .. autofunction:: abacus.auto_ab.ParallelExperiments._hashing
-
-Simulation
-----------
-
-.. autoclass:: abacus.auto_ab.Simulation
-   :members: _add_increment, set_increment, sample_size_simulation,
-        mde_simulation, mde_hyperopt, sample_size, mde
-
-Splitter
---------
-
-.. autoclass:: abacus.auto_ab.Splitter
-   :members: config_load, _split_data, __default_splitter,
-        __clustering, __kl_divergence, __model_classify, __alpha_simulation,
-        aa_test, fit
