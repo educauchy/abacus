@@ -242,6 +242,7 @@ class ABTest:
         
         dataset_new.control = params_new.data_params.control
         dataset_new.treatment = params_new.data_params.treatment
+        params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'bucketing')
 
         return ABTest(None, params_new)
 
@@ -260,6 +261,7 @@ class ABTest:
         params_new = copy.deepcopy(self.params)
         params_new.data_params.control = self.__get_group(self.params.data_params.control_name, result_df)
         params_new.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, result_df)
+        params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'cuped')
 
         return ABTest(result_df, params_new)
 
@@ -280,10 +282,11 @@ class ABTest:
         params_new = copy.deepcopy(self.params)
         params_new.data_params.control = self.__get_group(self.params.data_params.control_name, result_df)
         params_new.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, result_df)
+        params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'cupac')
 
         return ABTest(result_df, params_new)
 
-    def linearization(self) -> None:
+    def linearization(self) -> ABTest:
         """Creates linearized continuous metric based on ratio-metric.
         Important: there is an assumption that all data is already grouped by user
         s.t. numerator for user = sum of numerators for user for different time periods
@@ -291,21 +294,57 @@ class ABTest:
 
         Source: https://research.yandex.com/publications/148.
         """
-        if not self.params.data_params.is_grouped:
-            not_ratio_columns = self.__dataset.columns[~self.__dataset.columns.isin([self.params.data_params.numerator,
-                                                                                     self.params.data_params.denominator])].tolist()
-            df_grouped = self.__dataset.groupby(by=not_ratio_columns, as_index=False).agg({
-                self.params.data_params.numerator: 'sum',
-                self.params.data_params.denominator: 'sum'
-            })
+        if self.params.data_params.is_grouped:
+            return ABTest(self.__dataset, self.params)
+
+        dataset_new = copy.deepcopy(self.__dataset)
+        params_new = copy.deepcopy(self.params)
+
+        num_col, den_col = 'num', 'den'
+
+        if self.params.hypothesis_params.metric_type == 'ratio':
+            numerator_col_name = self.params.data_params.numerator
+            denominator_col_name = self.params.data_params.denominator
+
+            df_grouped = self.__dataset.groupby(by=[self.params.data_params.id_col,
+                                                    self.params.data_params.group_col]) \
+                                        .agg({numerator_col_name: 'sum', denominator_col_name: 'sum'}) \
+                                        .rename(columns={numerator_col_name: num_col, denominator_col_name: den_col}) \
+                                        .reset_index()
             self.__dataset = df_grouped
 
-        x = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
-        k = round(sum(x[self.params.data_params.numerator]) / sum(x[self.params.data_params.denominator]), 4)
+        elif self.params.hypothesis_params.metric_type == 'solid':
+            target_col_name = self.params.data_params.target
 
-        self.__dataset.loc[:, f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"] = \
-            self.__dataset[self.params.data_params.numerator] - k * self.__dataset[self.params.data_params.denominator]
-        self.target = f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"
+            df_grouped = self.__dataset.groupby(by=[self.params.data_params.id_col,
+                                                    self.params.data_params.group_col],
+                                                as_index=False)[target_col_name].agg(['sum', 'count']) \
+                                        .rename(columns={'sum': num_col, 'count': den_col}) \
+                                        .reset_index()
+
+            self.__dataset = df_grouped
+
+        ctrl = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        k = round(sum(ctrl[num_col]) / sum(ctrl[den_col]), 5)
+
+        new_target_name = 'target_linearized'
+        self.__dataset.loc[:, new_target_name] = self.__dataset[num_col] - k * self.__dataset[den_col]
+
+        dataset_new = dataset_new.merge(self.__dataset[[self.params.data_params.id_col,
+                                                        new_target_name]],
+                                        how='left', on=self.params.data_params.id_col)
+        dataset_new = dataset_new.drop_duplicates(subset=['id'])
+        params_new.data_params.target = new_target_name
+        params_new.data_params.control = dataset_new.loc[
+                                            dataset_new[self.params.data_params.group_col] == self.params.data_params.control_name,
+                                            new_target_name].to_numpy()
+        params_new.data_params.treatment = dataset_new.loc[
+                                            dataset_new[self.params.data_params.group_col] == self.params.data_params.treatment_name,
+                                            new_target_name].to_numpy()
+
+        params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'linearization')
+
+        return ABTest(dataset_new, params_new)
 
     def plot(self) -> None:
         """Plot experiment.
@@ -325,6 +364,86 @@ class ABTest:
 
         if self.params.hypothesis_params.metric_type == 'binary':
             Graphics.plot_binary_experiment(self.params)
+
+    def report(self) -> None:
+        hypothesis = self.params.hypothesis_params
+        ctrl = self.params.data_params.control
+        trtm = self.params.data_params.treatment
+
+        welch = self.test_welch()
+        welch_res = 'H0 is not rejected' if welch['result'] == 0 else 'H0 is rejected'
+        mwu = self.test_mannwhitney()
+        mwu_res = 'H0 is not rejected' if mwu['result'] == 0 else 'H0 is rejected'
+        boot = self.test_boot_confint()
+        boot_res = 'H0 is not rejected' if boot['result'] == 0 else 'H0 is rejected'
+
+        test_result = welch['result'] + mwu['result'] + boot['result']
+        if test_result == 3:
+            test_explanation = 'All three stat. tests showed that H0 is rejected.'
+        elif test_result == 2:
+            test_explanation = 'Two out of three stat. tests showed that H0 is rejected.'
+        elif test_result == 1:
+            test_explanation = 'Two out of three stat. tests showed that H0 is not rejected.'
+        elif test_result == 0:
+            test_explanation = 'All three stat. tests showed that H0 is not rejected.'
+
+        bucketing_str = ''
+        if 'bucketing' in self.params.data_params.transforms:
+            bucketing_str = f'Number of buckets: {hypothesis.n_buckets}'
+
+        params = {
+            'welch_stat': welch['stat'], 'welch_pvalue': welch['p-value'], 'welch_result': welch_res,
+            'mwu_stat': mwu['stat'], 'mwu_pvalue': mwu['p-value'], 'mwu_result': mwu_res,
+            'boot_result': boot_res,
+            'ctrl_obs': len(ctrl), 'trtm_obs': len(trtm),
+            'ctrl_mean': np.mean(ctrl),'ctrl_median': np.median(ctrl), 'ctrl_25th': np.quantile(ctrl, 0.25),
+            'ctrl_75th': np.quantile(ctrl, 0.75), 'ctrl_min': np.min(ctrl), 'ctrl_max': np.max(ctrl),
+            'trtm_mean': np.mean(trtm),'trtm_median': np.median(trtm), 'trtm_25th': np.quantile(trtm, 0.25),
+            'trtm_75th': np.quantile(trtm, 0.75), 'trtm_min': np.min(trtm), 'trtm_max': np.max(trtm),
+            'alpha': hypothesis.alpha, 'beta': hypothesis.beta, 'alternative': hypothesis.alternative,
+            'metric_name': hypothesis.metric_name, 'bucketing_str': bucketing_str,
+            'transforms': ' -> '.join(self.params.data_params.transforms.tolist()),
+            'n_boot_samples': hypothesis.n_boot_samples,
+            'test_explanation': test_explanation
+        }
+
+        output = '''
+        Parameters of experiment:
+        - Metric: {metric_name}.
+        - Errors: alpha = {alpha}, beta = {beta}.
+        - Alternative: {alternative}.
+        
+        Control group:
+        - Observations: {ctrl_obs}
+        - Mean: {ctrl_mean:.4f}
+        - Median: {ctrl_median:.4f}
+        - 25th quantile: {ctrl_25th:.4f}
+        - 75th quantile: {ctrl_75th:.4f}
+        - Minimum: {ctrl_min:.4f}
+        - Maximum: {ctrl_max:.4f}
+        
+        Treatment group:
+        - Observations: {trtm_obs}
+        - Mean: {trtm_mean:.4f}
+        - Median: {trtm_median:.4f}
+        - 25th quantile: {trtm_25th:.4f}
+        - 75th quantile: {trtm_75th:.4f}
+        - Minimum: {trtm_min:.4f}
+        - Maximum: {trtm_max:.4f}
+        
+        Transformations applied: {transforms}.
+        Number of bootstrap iterations: {n_boot_samples}. 
+        {bucketing_str}
+        
+        Following statistical tests are used:
+        - Welch's t-test: {welch_stat:.2f}, p-value = {welch_pvalue:.4f}, {welch_result}.
+        - Mann Whitney's U-test: {mwu_stat:.2f}, p-value = {mwu_pvalue:.4f}, {mwu_result}.
+        - Bootstrap test: {boot_result}.
+        
+        {test_explanation}
+        '''.format(**params)
+
+        print(output)
 
     def resplit_df(self) -> ABTest:
         """Resplit dataframe.

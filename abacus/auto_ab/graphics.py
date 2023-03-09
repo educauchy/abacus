@@ -42,7 +42,8 @@ class Graphics:
         control_dist_height, _ = np.histogram(params.data_params.control, bins=bins)
         treatment_dist_height, _ = np.histogram(params.data_params.treatment, bins=bins)
         hist_height = max(max(control_dist_height), max(treatment_dist_height))
-        
+
+        plt.rcParams.update({'font.size': 14})
         fig, ax = plt.subplots(figsize=(20, 12))
         ax.text(a_mean, hist_height // 2, 'H0', fontweight='bold', color='white', fontsize='xx-large')
         ax.text(b_mean, hist_height // 2, 'H1', fontweight='bold', color='white', fontsize='xx-large')
@@ -107,18 +108,32 @@ class Graphics:
         x = params.data_params.control
         y = params.data_params.treatment
 
+        ctrl_total = len(x)
         ctrl_conv = sum(x)
-        ctrl_not_conv = len(x) - sum(x)
+        ctrl_not_conv = ctrl_total - ctrl_conv
+        ctrl_conv_share = round(ctrl_conv / ctrl_total * 100, 2)
+        ctrl_not_conv_share = round(ctrl_not_conv / ctrl_total * 100, 2)
+        treat_total = len(y)
         treat_conv = sum(y)
-        treat_not_conv = len(y) - sum(y)
+        treat_not_conv = treat_total - treat_conv
+        treat_conv_share = round(treat_conv / treat_total * 100, 2)
+        treat_not_conv_share = round(treat_not_conv / treat_total * 100, 2)
 
         df = pd.DataFrame(data={
             'Experiment group': ['control', 'control', 'treatment', 'treatment'],
             'is converted': ['no', 'yes', 'no', 'yes'],
-            'Number of observations': [ctrl_not_conv, ctrl_conv, treat_not_conv, treat_conv]
+            'Number of observations': [ctrl_not_conv, ctrl_conv, treat_not_conv, treat_conv],
+            'Share': [ctrl_not_conv_share, ctrl_conv_share, treat_not_conv_share, treat_conv_share]
         })
+        shares = [ctrl_not_conv_share, treat_not_conv_share, ctrl_conv_share, treat_conv_share]
+
         plt.figure(figsize=(20, 12), dpi=300)
-        sns.barplot(data=df, x="Experiment group", y="Number of observations", hue='is converted')
+        ax = sns.barplot(data=df, x="Experiment group", y="Number of observations", hue='is converted')
+        patches = ax.patches
+        for i in range(len(patches)):
+            x = patches[i].get_x() + patches[i].get_width() / 2
+            y = patches[i].get_height() + .05
+            ax.annotate('{:.1f}%'.format(shares[i]), (x, y), ha='center')
         plt.show()
         plt.close()
 

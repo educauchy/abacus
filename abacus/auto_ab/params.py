@@ -26,6 +26,7 @@ class DataParams:
     is_grouped: bool = True
     control: Optional[np.ndarray] = np.array([])
     treatment: Optional[np.ndarray] = np.array([])
+    transforms: Optional[np.ndarray] = np.array([])
 
 @dataclass(config=ValidationConfig)
 class HypothesisParams:
