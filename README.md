@@ -1,8 +1,8 @@
-# ABacus - A/B library for fast hypothesis testing and experiment design
+# ABacus: fast hypothesis testing and experiment design solution
 
 **ABacus** is a Python library developed for A/B experimentation and testing.
 It includes versatile instruments for different experimentation tasks like
-prepilot, sample size determination, results calculation.
+prepilot, sample size determination, results calculation, visualisations and reporting.
 
 ## Important features
 
@@ -56,12 +56,3 @@ Authors and developers:
 * [Vadim Glukhov](https://github.com/educauchy)
 * [Egor Shishkovets](https://github.com/egorshishkovets)
 * [Dmitry Zabavin](https://github.com/dmitryzabavin)
-
-
-[## Docs compilation
-
-```sheel
-pip install mkl mkl-service
-cd docs/
-make html
-```]: #

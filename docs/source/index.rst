@@ -1,12 +1,8 @@
 Welcome to ABacus documentation!
 ================================
 
-.. shields start
-
 |PyPI| |PyPI License| |ReadTheDocs| |Python Versions|
-=======
-
-|PyPI| |PyPI License| |ReadTheDocs|
+=====================================================
 .. |PyPI| image:: https://img.shields.io/pypi/v/abacus
     :target: https://pypi.org/project/abacus
 .. |PyPI License| image:: https://img.shields.io/pypi/l/abacus.svg
@@ -16,21 +12,19 @@ Welcome to ABacus documentation!
 .. |Python Versions| image:: https://img.shields.io/pypi/pyversions/abacus.svg
     :target: https://pypi.org/project/abacus
 
-.. shields end
-
 **ABacus** is a Python library developed for A/B experimentation and testing.
 It includes versatile instruments for different experimentation tasks like
-prepilot, sample size determination, results calculation.
+experiment design, sample size determination, results evaluation, visualisation and reporting.
 
 
 Important features
 ------------------
 
-* Prepilot design: type I/II errors, effect size, sample size simulations
-* Groups splitting
-* A/A test and evaluation of splitter accuracy
-* Evaluation of experiment results with various statistical tests and approaches
-* Sensitivity increasing techniques like CUPED, CUPAC
+* Experiment design: type I/II errors, effect size, sample size simulations.
+* Groups splitting.
+* A/A test and evaluation of splitter accuracy.
+* Evaluation of experiment results with various statistical tests and approaches.
+* Sensitivity increasing techniques like CUPED, CUPAC.
 
 .. note::
 
