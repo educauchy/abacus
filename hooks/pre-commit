@@ -1,0 +1,26 @@
+#!/usr/bin/python3
+# hook for pre commit activities (tests, linters, etc)
+import sys
+import os
+
+
+command1 = 'flake8 ./src/models --count --select=E9,F63,F7,F82 --show-source --statistics'
+command2 = 'flake8 ./src/models --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics'
+command3 = 'pip check'
+command4 = 'cd docs; make html'
+
+# os.system returns exit code, 0 - success
+conditions_all = [
+    not os.system(command1),
+    not os.system(command2),
+    not os.system(command3),
+    not os.system(command4),
+]
+
+if all(conditions_all):
+    print('Tests passed!')
+    sys.exit(0)
+else:
+    print('One or more tests failed!')
+    print(conditions_all)
+    sys.exit(1)

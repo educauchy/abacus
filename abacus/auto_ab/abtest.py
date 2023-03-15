@@ -292,20 +292,28 @@ class ABTest:
         Source: https://research.yandex.com/publications/148.
         """
         if not self.params.data_params.is_grouped:
-            not_ratio_columns = self.__dataset.columns[~self.__dataset.columns.isin([self.params.data_params.numerator,
-                                                                                     self.params.data_params.denominator])].tolist()
-            df_grouped = self.__dataset.groupby(by=not_ratio_columns, as_index=False).agg({
-                self.params.data_params.numerator: 'sum',
-                self.params.data_params.denominator: 'sum'
-            })
+            # not_ratio_columns = self.__dataset.columns[~self.__dataset.columns.isin([self.params.data_params.numerator,
+            #                                                                          self.params.data_params.denominator])].tolist()
+            group_columns = [self.params.data_params.id_col, self.params.data_params.group_col]
+
+            if self.params.hypothesis_params.metric_type == 'ratio':
+                df_grouped = self.__dataset.groupby(by=group_columns, as_index=False).agg({
+                    self.params.data_params.numerator: 'sum',
+                    self.params.data_params.denominator: 'sum'
+                }).reset_index()
+            elif self.params.hypothesis_params.metric_type == 'solid':
+                df_grouped = self.__dataset.groupby(by=group_columns, as_index=False).agg({
+                    self.params.data_params.target: ['sum', 'count']
+                    # self.params.data_params.target: 'count'
+                }).reset_index()
             self.__dataset = df_grouped
 
-        x = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
-        k = round(sum(x[self.params.data_params.numerator]) / sum(x[self.params.data_params.denominator]), 4)
+            x = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+            k = round(sum(x[self.params.data_params.numerator]) / sum(x[self.params.data_params.denominator]), 4)
 
-        self.__dataset.loc[:, f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"] = \
-            self.__dataset[self.params.data_params.numerator] - k * self.__dataset[self.params.data_params.denominator]
-        self.target = f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"
+            self.__dataset.loc[:, f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"] = \
+                self.__dataset[self.params.data_params.numerator] - k * self.__dataset[self.params.data_params.denominator]
+            self.target = f"{self.params.data_params.numerator}_{self.params.data_params.denominator}"
 
     def plot(self) -> None:
         """Plot experiment.
