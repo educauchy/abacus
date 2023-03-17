@@ -241,12 +241,12 @@ class ABTest:
 
         params_new.data_params.control = self.__bucketize(self.params.data_params.control)
         params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
-
+        
         dataset_new.control = params_new.data_params.control
         dataset_new.treatment = params_new.data_params.treatment
         params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'bucketing')
 
-        return ABTest(None, params_new)
+        return ABTest(dataset_new, params_new)
 
     def cuped(self) -> ABTest:
         """Performs CUPED for variance reduction.
@@ -310,9 +310,9 @@ class ABTest:
 
             df_grouped = self.__dataset.groupby(by=[self.params.data_params.id_col,
                                                     self.params.data_params.group_col]) \
-                .agg({numerator_col_name: 'sum', denominator_col_name: 'sum'}) \
-                .rename(columns={numerator_col_name: num_col, denominator_col_name: den_col}) \
-                .reset_index()
+                                        .agg({numerator_col_name: 'sum', denominator_col_name: 'sum'}) \
+                                        .rename(columns={numerator_col_name: num_col, denominator_col_name: den_col}) \
+                                        .reset_index()
             self.__dataset = df_grouped
 
         elif self.params.hypothesis_params.metric_type == 'solid':
@@ -321,13 +321,12 @@ class ABTest:
             df_grouped = self.__dataset.groupby(by=[self.params.data_params.id_col,
                                                     self.params.data_params.group_col],
                                                 as_index=False)[target_col_name].agg(['sum', 'count']) \
-                .rename(columns={'sum': num_col, 'count': den_col}) \
-                .reset_index()
+                                        .rename(columns={'sum': num_col, 'count': den_col}) \
+                                        .reset_index()
 
             self.__dataset = df_grouped
 
-        ctrl = self.__dataset.loc[
-            self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        ctrl = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
         k = round(sum(ctrl[num_col]) / sum(ctrl[den_col]), 5)
 
         new_target_name = 'target_linearized'
@@ -339,12 +338,11 @@ class ABTest:
         dataset_new = dataset_new.drop_duplicates(subset=['id'])
         params_new.data_params.target = new_target_name
         params_new.data_params.control = dataset_new.loc[
-            dataset_new[self.params.data_params.group_col] == self.params.data_params.control_name,
-            new_target_name].to_numpy()
+                                            dataset_new[self.params.data_params.group_col] == self.params.data_params.control_name,
+                                            new_target_name].to_numpy()
         params_new.data_params.treatment = dataset_new.loc[
-            dataset_new[self.params.data_params.group_col] == self.params.data_params.treatment_name,
-            new_target_name].to_numpy()
-
+                                            dataset_new[self.params.data_params.group_col] == self.params.data_params.treatment_name,
+                                            new_target_name].to_numpy()
         params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'linearization')
 
         return ABTest(dataset_new, params_new)
@@ -359,10 +357,10 @@ class ABTest:
         """
         if self.params.hypothesis_params.metric_type == 'solid':
             if self.params.hypothesis_params.metric_name == 'mean' \
-                    or self.params.hypothesis_params.metric == 'mean':
+                or self.params.hypothesis_params.metric == 'mean':
                 Graphics.plot_mean_experiment(self.params)
             elif self.params.hypothesis_params.metric_name == 'median' \
-                    or self.params.hypothesis_params.metric == 'median':
+                or self.params.hypothesis_params.metric == 'median':
                 Graphics.plot_median_experiment(self.params)
 
         if self.params.hypothesis_params.metric_type == 'binary':
@@ -421,7 +419,7 @@ class ABTest:
         - Metric: {metric_name}.
         - Errors: alpha = {alpha}, beta = {beta}.
         - Alternative: {alternative}.
-
+        
         Control group:
         - Observations: {ctrl_obs}
         - Mean: {ctrl_mean:.4f}
@@ -430,7 +428,7 @@ class ABTest:
         - 75th quantile: {ctrl_75th:.4f}
         - Minimum: {ctrl_min:.4f}
         - Maximum: {ctrl_max:.4f}
-
+        
         Treatment group:
         - Observations: {trtm_obs}
         - Mean: {trtm_mean:.4f}
@@ -447,7 +445,7 @@ class ABTest:
         - Welch's t-test: {welch_stat:.2f}, p-value = {welch_pvalue:.4f}, {welch_result}.
         - Mann Whitney's U-test: {mwu_stat:.2f}, p-value = {mwu_pvalue:.4f}, {mwu_result}.
         - Bootstrap test: {boot_result}.
-
+        
         {test_explanation}
         '''.format(**params)
 
@@ -857,7 +855,7 @@ class ABTest:
         }
         return result
 
-    def test_post_strat_confint(self) -> stat_test_typing:
+    def test_strat_confint_new(self) -> stat_test_typing:
         """ Performs stratification with confidence interval.
 
         Returns:
@@ -870,6 +868,9 @@ class ABTest:
             self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
         y = self.__dataset.loc[
             self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
+
+        x_target = x[self.params.data_params.target]
+        y_target = y[self.params.data_params.target]
 
         x_target = x[self.params.data_params.target]
         y_target = y[self.params.data_params.target]
@@ -894,11 +895,105 @@ class ABTest:
                     np.random.choice(y_strata, size=y_strata.shape[0], replace=True)) *
                                     self.params.hypothesis_params.strata_weights[strat])
 
+            iter_diff = self.params.hypothesis_params.metric(y_strata_metric) - self.params.hypothesis_params.metric(x_strata_metric)
+            metric_diffs.append(iter_diff)
+
+        share = 0.1
+        mean_diffs: List[float] = []
+        var_diffs: List[float] = []
+        t_calc: int = 0
+
+        for _ in range(self.params.hypothesis_params.n_boot_samples):
+            x_strata_mean: float = 0
+            y_strata_mean: float = 0
+            x_strata_var: float = 0
+            y_strata_var: float = 0
+            for strat in self.params.hypothesis_params.strata_weights.keys():
+                x_strata = x.loc[x[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
+                y_strata = y.loc[y[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
+
+                x_strat_sample = np.random.choice(x_strata, size=int(x_strata.shape[0] * share), replace=False)
+                y_strat_sample = np.random.choice(y_strata, size=int(y_strata.shape[0] * share), replace=False)
+
+                x_strata_mean += (self.params.hypothesis_params.metric(x_strat_sample) *
+                                    self.params.hypothesis_params.strata_weights[strat])
+                y_strata_mean += (self.params.hypothesis_params.metric(y_strat_sample) *
+                                    self.params.hypothesis_params.strata_weights[strat])
+
+
+
+
+            x_boot = np.random.choice(x, size=x.shape[0], replace=True)
+            y_boot = np.random.choice(y, size=y.shape[0], replace=True)
+
+            t_boot = (np.mean(x_boot) - np.mean(y_boot)) / (np.var(x_boot) / x_boot.shape[0] + np.var(y_boot) / y_boot.shape[0])
+            test_res = ttest_ind(y_boot, x_boot, equal_var=False, alternative=self.params.hypothesis_params.alternative)
+
+            if t_boot >= test_res[1]:
+                t_calc += 1
+
+        pvalue = t_calc / self.params.hypothesis_params.n_boot_samples
+
+        test_result: int = 0  # 0 - cannot reject H0, 1 - reject H0
+        if pvalue <= self.params.hypothesis_params.alpha:
+            test_result = 1
+
+        pd_metric_diffs = pd.DataFrame(metric_diffs)
+
+        left_quant = self.params.hypothesis_params.alpha / 2
+        right_quant = 1 - self.params.hypothesis_params.alpha / 2
+        ci = pd_metric_diffs.quantile([left_quant, right_quant])
+        ci_left, ci_right = float(ci.iloc[0]), float(ci.iloc[1])
+
+        test_result: int = 0  # 0 - cannot reject H0, 1 - reject H0
+        if ci_left > 0 or ci_right < 0:  # left border of ci > 0 or right border of ci < 0
+            test_result = 1
+
+        result = {
+            'stat': None,
+            'p-value': None,
+            'result': test_result
+        }
+        return result
+
+    def test_strat_confint_old(self) -> stat_test_typing:
+        """ Performs stratification with confidence interval.
+
+        Returns:
+            stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
+        """
+        metric_diffs: List[float] = []
+        vars_diffs = []
+        avg_boot_metric_diffs = []
+        x = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
+
+        x_target = x[self.params.data_params.target]
+        y_target = y[self.params.data_params.target]
+
+        for _ in range(self.params.hypothesis_params.n_boot_samples):
+            x_boot = np.random.choice(x_target, len(x_target), replace=True)
+            y_boot = np.random.choice(y_target, len(y_target), replace=True)
+            avg_boot_metric_diffs.append(self.params.hypothesis_params.metric(y_boot) - self.params.hypothesis_params.metric(x_boot))
+
+            x_strata_metric = 0
+            y_strata_metric = 0
+            x_strata_list = []
+            y_strata_list = []
+            for strat in self.params.hypothesis_params.strata_weights.keys():
+                x_strata = x.loc[x[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
+                y_strata = y.loc[y[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
+                x_strata_metric += (self.params.hypothesis_params.metric(
+                                        np.random.choice(x_strata, size=x_strata.shape[0], replace=True)) *
+                                    self.params.hypothesis_params.strata_weights[strat])
+                y_strata_metric += (self.params.hypothesis_params.metric(
+                                        np.random.choice(y_strata, size=y_strata.shape[0], replace=True)) *
+                                    self.params.hypothesis_params.strata_weights[strat])
+
             x_strata_list.append(x_strata_metric)
             y_strata_list.append(y_strata_metric)
 
-            iter_diff = self.params.hypothesis_params.metric(y_strata_metric) - self.params.hypothesis_params.metric(
-                x_strata_metric)
+            iter_diff = self.params.hypothesis_params.metric(y_strata_metric) - self.params.hypothesis_params.metric(x_strata_metric)
             metric_diffs.append(iter_diff)
 
         pd_metric_diffs = pd.DataFrame(metric_diffs)
