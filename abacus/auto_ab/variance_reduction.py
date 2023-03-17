@@ -35,8 +35,10 @@ class VarianceReduction:
         x_train = x[factors_prev]
         model = sm.OLS(y, x_train)
         results = model.fit()
+
         print(results.summary())
         x_predict = x[factors_now]
+
         return results.predict(x_predict)
 
     @classmethod
