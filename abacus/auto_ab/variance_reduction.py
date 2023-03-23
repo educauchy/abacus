@@ -33,13 +33,11 @@ class VarianceReduction:
         """
         y = x[target_prev]
         x_train = x[factors_prev]
-        model = sm.OLS(y, x_train)
-        results = model.fit()
 
-        print(results.summary())
-        x_predict = x[factors_now]
+        model = sm.OLS(y, x_train).fit()
+        x_pred = x[factors_now]
 
-        return results.predict(x_predict)
+        return model.predict(x_pred)
 
     @classmethod
     def cupac(cls, x: pd.DataFrame, target_prev: str, target_now: str,
@@ -61,8 +59,8 @@ class VarianceReduction:
             pandas.DataFrame: Pandas DataFrame with additional columns: target_pred and target_now_cuped
         """
         x = cls._target_encoding(x, list(set(factors_prev + factors_now)), target_prev)
-        x.loc[:, 'target_pred'] = cls._predict_target(x, target_prev, factors_prev, factors_now)
-        x_new = cls.cuped(x, target_now, groups, 'target_pred')
+        x.loc[:, 'covariate'] = cls._predict_target(x, target_prev, factors_prev, factors_now)
+        x_new = cls.cuped(x, target_now, groups, 'covariate')
         return x_new
 
     @classmethod

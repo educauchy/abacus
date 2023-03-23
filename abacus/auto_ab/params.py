@@ -21,9 +21,9 @@ class DataParams:
     numerator: Optional[str] = ''
     denominator: Optional[str] = ''
     covariate: Optional[str] = ''
-    target_prev: Optional[str] = ''
-    predictors: Optional[List[str]] = Field(default=['pred_1'])
-    predictors_prev: Optional[List[str]] = Field(default=['pred_prev_1'])
+    target_prev: Optional[str] = 'target_prev'
+    predictors_now: Optional[List[str]] = Field(default=['pred_now'])
+    predictors_prev: Optional[List[str]] = Field(default=['pred_prev'])
     control: Optional[np.ndarray] = np.array([])
     treatment: Optional[np.ndarray] = np.array([])
     transforms: Optional[np.ndarray] = np.array([])
@@ -41,8 +41,8 @@ class HypothesisParams:
     metric_transform_info: Optional[Dict[str, Dict[str, Any]]] = None
     n_boot_samples: Optional[int] = 200
     n_buckets: Optional[int] = 50
-    strata: Optional[str] = 'country'
-    strata_weights: Optional[dict] = Field(default={1: 0.8, 2: 0.2})
+    strata: Optional[str] = ''
+    strata_weights: Optional[Dict[str, float]] = Field(default={'1': 0.8, '2': 0.2})
 
     def __post_init__(self):
         if self.metric_name == 'mean':
