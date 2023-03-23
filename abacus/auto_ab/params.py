@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Tuple, Any, Callable, Union, Optional
+from typing import List, Dict, Any, Callable, Optional
 from pydantic.dataclasses import dataclass
 from pydantic import validator, Field
 import numpy as np
@@ -14,16 +14,16 @@ class DataParams:
     group_col: str = 'groups'
     control_name: str = 'A'
     treatment_name: str = 'B'
-    strata_col: Optional[str] = 'country'
-    target: str = 'height_now'
-    target_flg: str = 'bought'
-    predictors: List[str] = Field(default=['weight_now'])
-    numerator: str = 'clicks'
-    denominator: str = 'sessions'
-    covariate: str = 'height_prev'
-    target_prev: str = 'height_prev'
-    predictors_prev: List[str] = Field(default=['weight_prev'])
     is_grouped: bool = True
+    strata_col: Optional[str] = ''
+    target: Optional[str] = ''
+    target_flg: Optional[str] = ''
+    numerator: Optional[str] = ''
+    denominator: Optional[str] = ''
+    covariate: Optional[str] = ''
+    target_prev: Optional[str] = ''
+    predictors: Optional[List[str]] = Field(default=['pred_1'])
+    predictors_prev: Optional[List[str]] = Field(default=['pred_prev_1'])
     control: Optional[np.ndarray] = np.array([])
     treatment: Optional[np.ndarray] = np.array([])
     transforms: Optional[np.ndarray] = np.array([])
@@ -33,20 +33,22 @@ class HypothesisParams:
     alpha: float = 0.05
     beta: float = 0.2
     alternative: str = 'two-sided'  # less, greater, two-sided
-    strata: Optional[str] = 'country'
-    strata_weights: Optional[dict] = Field(default={1: 0.8, 2: 0.2})
     metric_type: str = 'solid'
     metric_name: str = 'mean'
-    metric: Union[Callable[[Any], Union[int,float]], str] = np.mean
+    filter_method: Optional[str] = 'top_5'
+    metric: Optional[Callable[[Any], float]] = np.mean
+    metric_transform: Optional[Callable[[np.ndarray], np.ndarray]] = None
+    metric_transform_info: Optional[Dict[str, Dict[str, Any]]] = None
     n_boot_samples: Optional[int] = 200
     n_buckets: Optional[int] = 50
+    strata: Optional[str] = 'country'
+    strata_weights: Optional[dict] = Field(default={1: 0.8, 2: 0.2})
 
     def __post_init__(self):
-        if type(self.metric) == str:
-            if self.metric == 'mean':
-                self.metric = np.mean
-            if self.metric == 'median':
-                self.metric = np.median
+        if self.metric_name == 'mean':
+            self.metric = np.mean
+        if self.metric_name == 'median':
+            self.metric = np.median
 
     @validator("alpha", always=True)
     @classmethod
@@ -66,15 +68,15 @@ class HypothesisParams:
         assert alternative in ['two-sided', 'less', 'greater']
         return alternative
 
-    @validator("metric", always=True)
-    @classmethod
-    def metric_validator(cls,
-                         metric: Union[Callable[[Any], Union[int,float]], str]) -> str:
-        if type(metric) == str:
-            assert metric in ['mean', 'median']
-            return metric
-        else:
-            return metric
+    # @validator("metric", always=True)
+    # @classmethod
+    # def metric_validator(cls,
+    #                      metric: Union[Callable[[Any], Union[int,float]], str]) -> str:
+    #     if type(metric) == str:
+    #         assert metric in ['mean', 'median']
+    #         return metric
+    #     else:
+    #         return metric
 
 @dataclass
 class ABTestParams:

@@ -28,52 +28,33 @@ class Graphics:
         plt.close()
 
     @classmethod
-    def plot_mean_experiment(cls, params: ABTestParams) -> None:
+    def plot_solid_experiment(cls, params: ABTestParams) -> None:
         """Plot distributions of means in experiment groups.
 
         Args:
             params (ABTestParams): Parameters of the experiment.
         """
         bins = 300
-        a_mean = np.mean(params.data_params.control)
-        b_mean = np.mean(params.data_params.treatment)
-        # threshold = np.quantile(params.data_params.control, 0.975)
-        
+        ctrl_mean = params.hypothesis_params.metric(params.data_params.control)
+        trtm_mean = params.hypothesis_params.metric(params.data_params.treatment)
+        metric_name = params.hypothesis_params.metric_name
+
         control_dist_height, _ = np.histogram(params.data_params.control, bins=bins)
         treatment_dist_height, _ = np.histogram(params.data_params.treatment, bins=bins)
         hist_height = max(max(control_dist_height), max(treatment_dist_height))
 
+        x_label = params.data_params.target
+        if 'metric transform' in params.data_params.transforms:
+            x_label = params.hypothesis_params.metric_transform.__name__ + '(' + params.data_params.target + ')'
+
         plt.rcParams.update({'font.size': 14})
         fig, ax = plt.subplots(figsize=(20, 12))
-        ax.text(a_mean, hist_height // 2, 'H0', fontweight='bold', color='white', fontsize='xx-large')
-        ax.text(b_mean, hist_height // 2, 'H1', fontweight='bold', color='white', fontsize='xx-large')
         ax.hist(params.data_params.control, bins, alpha=0.5, label='Control', color='Red')
         ax.hist(params.data_params.treatment, bins, alpha=0.5, label='Treatment', color='Blue')
-        ax.axvline(x=a_mean, linewidth=2, color='Red')
-        ax.axvline(x=b_mean, linewidth=2, color='Blue')
-        # ax.axvline(x=threshold, color='Blue', label='Critical value')
+        ax.axvline(x=ctrl_mean, linewidth=2, color='Red', label=f'Control {metric_name}')
+        ax.axvline(x=trtm_mean, linewidth=2, color='Blue', label=f'Treatment {metric_name}')
         ax.legend()
-        plt.show()
-        plt.close()
-
-    @classmethod
-    def plot_median_experiment(cls, params: ABTestParams) -> None:
-        """Plot distributions of medians in experiment groups.
-
-        Args:
-            params (ABTestParams): Parameters of the experiment.
-        """
-        bins = 300
-        a_median = np.median(params.data_params.control)
-        b_median = np.median(params.data_params.treatment)
-        # threshold = np.quantile(params.data_params.control, 0.975)
-        fig, ax = plt.subplots(figsize=(20, 12))
-        ax.hist(params.data_params.control, bins, alpha=0.5, label='Control', color='Red')
-        ax.hist(params.data_params.treatment, bins, alpha=0.5, label='Treatment', color='Green')
-        ax.axvline(x=a_median, linewidth=2, color='Red')
-        ax.axvline(x=b_median, linewidth=2, color='Blue')
-        # ax.axvline(x=threshold, color='Blue', label='Critical value')
-        ax.legend(loc='upper right')
+        ax.set_xlabel(x_label)
         plt.show()
         plt.close()
 
