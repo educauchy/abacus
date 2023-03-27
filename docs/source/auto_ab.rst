@@ -83,11 +83,3 @@ Params
 .. autoclass:: abacus.auto_ab.DataParams
 .. autoclass:: abacus.auto_ab.HypothesisParams
 .. autoclass:: abacus.auto_ab.ABTestParams
-
-ParallelExperiments
--------------------
-
-.. autoclass:: abacus.auto_ab.ParallelExperiments
-
-.. autofunction:: abacus.auto_ab.ParallelExperiments._modulo
-.. autofunction:: abacus.auto_ab.ParallelExperiments._hashing
