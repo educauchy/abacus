@@ -33,9 +33,9 @@ class HypothesisParams:
     alpha: float = 0.05
     beta: float = 0.2
     alternative: str = 'two-sided'  # less, greater, two-sided
-    metric_type: str = 'solid'
-    metric_name: str = 'mean'
-    filter_method: Optional[str] = 'top_5'
+    metric_type: str = 'continuous'  # continuous, binary, ratio
+    metric_name: str = 'mean'  # mean, median
+    filter_method: Optional[str] = 'top_5'  # top_5, isolation_forest
     metric: Optional[Callable[[Any], float]] = np.mean
     metric_transform: Optional[Callable[[np.ndarray], np.ndarray]] = None
     metric_transform_info: Optional[Dict[str, Dict[str, Any]]] = None

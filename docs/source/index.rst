@@ -32,20 +32,24 @@ Important features
 
 .. toctree::
     :maxdepth: 1
-    :caption: Usage
+    :caption: User Guide
     :name: usage
 
-    usage
+    usage/installation
+    usage/experiment_initialization
+    usage/experiment_evaluation
+    usage/splitter
+    usage/mde_researcher
 
 .. toctree::
     :maxdepth: 1
-    :caption: Technical docs
+    :caption: Technical Documentation
     :name: technical
 
-    auto_ab
-    mde_researcher
-    resplitter
-    splitter
+    tech/auto_ab
+    tech/splitter
+    tech/resplitter
+    tech/mde_researcher
 
 Examples
 --------

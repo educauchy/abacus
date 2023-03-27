@@ -5,6 +5,17 @@ from category_encoders.target_encoder import TargetEncoder
 
 
 class VarianceReduction:
+    """Implementation of sensitivity increasing approaches.
+
+    As it is easier to apply variance reduction techniques directrly to experiment, all approaches should be called on ``ABTest`` class instance.
+
+    Example:
+        >>> x = pd.read_csv('data.csv')
+        >>> ab_params = ABTestParams(...)
+        >>> ab_test = ABTest(x, ab_params)
+        >>> ab_test_vr = ab_test.cuped()
+    """
+
     def __init__(self) -> None:
         pass
 

@@ -28,7 +28,7 @@ class ABTest:
         >>> ab_params = ABTestParams(...)
         >>> ab_test = ABTest(x, ab_params)
         >>> ab_test.test_welch()
-        {'stat': 5.172, 'p-value': 0.312, 'result': 1}
+        {'stat': 5.172, 'p-value': 0.312, 'result': 0}
     """
 
     def __init__(self,
@@ -40,7 +40,7 @@ class ABTest:
 
         if dataset is not None \
                 and len(params.data_params.transforms) == 0\
-                and params.hypothesis_params.metric_type in ('solid', 'binary'):
+                and params.hypothesis_params.metric_type in ('continuous', 'binary'):
             self.__check_required_columns(dataset, 'init')
             self.params.data_params.control = self.__get_group(self.params.data_params.control_name, self.dataset)
             self.params.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, self.dataset)
@@ -50,9 +50,14 @@ class ABTest:
         return self.__dataset
 
     def __str__(self) -> str:
-        return f"ABTest(alpha={self.params.hypothesis_params.alpha}, " \
-               f"beta={self.params.hypothesis_params.beta}, " \
-               f"alternative='{self.params.hypothesis_params.alternative}')"
+        return """
+            ABTest(alpha={alpha}, beta={beta}, alternative={alternative},
+                   metric type={metric_type}, metric_name={metric_name})
+        """.format(alpha=self.params.hypothesis_params.alpha,
+                   beta=self.params.hypothesis_params.beta,
+                   alternative=self.params.hypothesis_params.alternative,
+                   metric_type=self.params.hypothesis_params.metric_type,
+                   metric_name=self.params.hypothesis_params.metric_name)
 
     def __check_required_columns(self, df: pd.DataFrame, method: str) -> None:
         """Check presence of columns in dataframe.
@@ -68,7 +73,7 @@ class ABTest:
         cols: List[str] = []
         if method == 'init':
             cols = [self.params.data_params.id_col, self.params.data_params.group_col]
-            if self.params.hypothesis_params.metric_type == 'solid':
+            if self.params.hypothesis_params.metric_type == 'continuous':
                 cols.append(self.params.data_params.target)
             elif self.params.hypothesis_params.metric_type == 'binary':
                 cols.append(self.params.data_params.target_flg)
@@ -107,7 +112,7 @@ class ABTest:
         """
         x = df if df is not None else self.__dataset
         group = np.array([])
-        if self.params.hypothesis_params.metric_type == 'solid':
+        if self.params.hypothesis_params.metric_type == 'continuous':
             group = x.loc[x[self.params.data_params.group_col] == group_label,
             self.params.data_params.target].to_numpy()
         elif self.params.hypothesis_params.metric_type == 'binary':
@@ -293,7 +298,7 @@ class ABTest:
 
         return output
 
-    def __report_solid(self) -> str:
+    def __report_continuous(self) -> str:
         hypothesis = self.params.hypothesis_params
         ctrl = self.params.data_params.control
         trtm = self.params.data_params.treatment
@@ -450,7 +455,6 @@ class ABTest:
 
     def filter_outliers(self) -> ABTest:
         target = self.__dataset[[self.params.data_params.target]].values
-        # print(f'Rows before: {self.__dataset.shape[0]}')
 
         if self.params.hypothesis_params.filter_method == 'isolation_forest':
             not_outlier_index = IsolationForest(random_state=0).fit_predict(target) == 1
@@ -461,7 +465,6 @@ class ABTest:
             not_outlier_index = self.__dataset[self.params.data_params.target] <= quantile95
             dataset_new = self.__dataset.loc[not_outlier_index].reset_index(drop=True)
 
-        # print(f'Rows left: {dataset_new.shape[0]}')
         params_new = copy.deepcopy(self.params)
         params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'filter outliers')
         params_new.data_params.control = self.__get_group(self.params.data_params.control_name, dataset_new)
@@ -495,7 +498,7 @@ class ABTest:
                                         .reset_index()
             self.__dataset = df_grouped
 
-        elif self.params.hypothesis_params.metric_type == 'solid':
+        elif self.params.hypothesis_params.metric_type == 'continuous':
             target_col_name = self.params.data_params.target
 
             df_grouped = self.__dataset.groupby(by=[self.params.data_params.id_col,
@@ -561,8 +564,8 @@ class ABTest:
         - hypothesis_params.metric_name
         - hypothesis_params.strategy
         """
-        if self.params.hypothesis_params.metric_type == 'solid':
-            Graphics.plot_solid_experiment(self.params)
+        if self.params.hypothesis_params.metric_type == 'continuous':
+            Graphics.plot_continuous_experiment(self.params)
 
         if self.params.hypothesis_params.metric_type == 'binary':
             Graphics.plot_binary_experiment(self.params)
@@ -570,8 +573,8 @@ class ABTest:
     def report(self) -> None:
         report_output = 'Report for ratio metric currently not supported.'
 
-        if self.params.hypothesis_params.metric_type == 'solid':
-            report_output = self.__report_solid()
+        if self.params.hypothesis_params.metric_type == 'continuous':
+            report_output = self.__report_continuous()
 
         if self.params.hypothesis_params.metric_type == 'binary':
             report_output = self.__report_binary()

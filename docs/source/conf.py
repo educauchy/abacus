@@ -71,7 +71,7 @@ html_theme_options = {"display_version": True, "logo_only": True}
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 html_css_files = ["css/style.css"]
-html_logo = "_static/abacus.png"
+# html_logo = "_static/abacus.png"
 
 # Custome
 autosummary_generate = True

@@ -72,9 +72,8 @@ Graphics
 
 .. autoclass:: abacus.auto_ab.Graphics
 
-.. autofunction:: abacus.auto_ab.Graphics.plot_simulation_matrix
-.. autofunction:: abacus.auto_ab.Graphics.plot_median_experiment
-.. autofunction:: abacus.auto_ab.Graphics.plot_mean_experiment
+.. autofunction:: abacus.auto_ab.Graphics.plot_continuous_experiment
+.. autofunction:: abacus.auto_ab.Graphics.plot_binary_experiment
 .. autofunction:: abacus.auto_ab.Graphics.plot_bootstrap_confint
 
 Params
