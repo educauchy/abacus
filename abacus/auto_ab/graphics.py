@@ -12,17 +12,26 @@ class Graphics:
     - Experiment's plot is based on metric type.
 
     Example:
-        >>> x = pd.read_csv('data.csv')
-        >>> ab_params = ABTestParams(...)
-        >>> ab_test = ABTest(x, ab_params)
-        >>> ab_test.plot()
+
+    .. code-block:: python
+
+        from abacus.auto_ab.abtest import ABTest
+        from abacus.auto_ab.params import ABTestParams, DataParams, HypothesisParams
+
+        data_params = DataParams(...)
+        hypothesis_params = HypothesisParams(...)
+        ab_params = ABTestParams(data_params, hypothesis_params)
+
+        df = pd.read_csv('data.csv')
+        ab_test = ABTest(df, ab_params)
+        ab_test.plot()
     """
     def __init__(self) -> None:
         pass
 
     @classmethod
     def plot_continuous_experiment(cls, params: ABTestParams) -> None:
-        """Plot distributions of means in experiment groups.
+        """Plot distributions of continuous metric and actual experiment metric.
 
         Args:
             params (ABTestParams): Parameters of the experiment.

@@ -3,6 +3,9 @@ from abacus.resplitter.params import ResplitParams
 
 
 class ResplitBuilder():
+    """Builds stratification split for DataFrame.
+    """
+
     def __init__(self,
                  df: pd.DataFrame,
                  resplit_params: ResplitParams):

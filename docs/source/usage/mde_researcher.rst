@@ -5,16 +5,15 @@ MDE Researcher
 The main purpose of its usage is calculation of samples size needed to detect particular effect size based on type
 I and II errors, directionality of hypothesis and other parameters.
 
-There are four components in experimental design:
+There are three components in experimental design:
 
-- data;
-- `experiment parameters (data and hypothesis description) <./experiment_initialization.html>`_;
+- `data and hypothesis parameters <./experiment_initialization.html>`_;
 - `splitter parameters <./splitter.html>`_;
 - actual experimental design parameters (this section).
 
 This is an example of everything at once for experimental design:
 
-.. code:: python
+.. code-block:: python
 
     from abacus.splitter.split_builder import SplitBuilder
     from abacus.splitter.params import SplitBuilderParams
@@ -39,9 +38,7 @@ This is an example of everything at once for experimental design:
         metric_type='continuous',
         metric_name='mean',
     )
-
     ab_params = ABTestParams(data_params, hypothesis_params)
-    ab_test = ABTest(df, ab_params)
 
     # splitter params
     split_builder_params = SplitBuilderParams(

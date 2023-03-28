@@ -7,7 +7,7 @@ equal in the sense of users' desired characteristic of experiment are equal.
 It is a crucial part of any experiment design - to get approximately equal groups.
 Splitter in **ABacus** not only allows you to split your observations into groups, but also assesses the quality of this split.
 
-.. code:: python
+.. code-block:: python
 
     df = pd.read_csv('./data/ab_data.csv')
 

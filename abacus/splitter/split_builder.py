@@ -17,7 +17,10 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 class SplitBuilder:
-    def __init__(self, 
+    """Builds stratification split for DataFrame.
+    """
+
+    def __init__(self,
                  split_data: pd.DataFrame, 
                  params: SplitBuilderParams):
         """Builds stratification split for DataFrame.

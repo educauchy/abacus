@@ -57,6 +57,8 @@ ABTest
 .. autofunction:: abacus.auto_ab.ABTest.test_welch
 .. autofunction:: abacus.auto_ab.ABTest.test_z_proportions
 
+|
+
 VarianceReduction
 -----------------
 
@@ -67,6 +69,8 @@ VarianceReduction
 .. autofunction:: abacus.auto_ab.VarianceReduction.cuped
 .. autofunction:: abacus.auto_ab.VarianceReduction.cupac
 
+|
+
 Graphics
 --------
 
@@ -75,6 +79,8 @@ Graphics
 .. autofunction:: abacus.auto_ab.Graphics.plot_continuous_experiment
 .. autofunction:: abacus.auto_ab.Graphics.plot_binary_experiment
 .. autofunction:: abacus.auto_ab.Graphics.plot_bootstrap_confint
+
+|
 
 Params
 ------

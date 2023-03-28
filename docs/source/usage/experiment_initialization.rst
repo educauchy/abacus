@@ -4,7 +4,7 @@ Experiment Initialization
 Before actual analysis, you have to define your experiment.
 Here is how you can do it:
 
-.. code:: python
+.. code-block:: python
 
     from abacus.auto_ab.abtest import ABTest
     from abacus.auto_ab.params import ABTestParams, DataParams, HypothesisParams

@@ -167,9 +167,9 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
                         for split_number in range(1,self.experiment_params.iterations_number + 1):
                             # experiment
                             experiment_params = MdeBetaExperiment(group_sizes=group_size,
-                                                                       split_number=split_number,
-                                                                       metric_name=metric_name,
-                                                                       inject=inject)
+                                                                  split_number=split_number,
+                                                                  metric_name=metric_name,
+                                                                  inject=inject)
                             split_column = f"is_control_{experiment_params.control_group_size}_{experiment_params.target_group_size}_{experiment_params.split_number}"
                             one_split_guests = (guests_with_splits.loc[guests_with_splits[split_column]
                                                                     .isin([0,1])]
@@ -251,8 +251,8 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
             for group_size in self.group_sizes:
                 for split_number in range(1,self.experiment_params.iterations_number + 1):
                     experiment_params = MdeAlphaExperiment(group_sizes=group_size,
-                                                                split_number=split_number,
-                                                                metric_name=metric_name)
+                                                           split_number=split_number,
+                                                           metric_name=metric_name)
                     split_column = f"is_control_{experiment_params.control_group_size}_{experiment_params.target_group_size}_{experiment_params.split_number}"
                     one_split_guests = (guests.loc[guests[split_column]
                                                             .isin([0,1])]

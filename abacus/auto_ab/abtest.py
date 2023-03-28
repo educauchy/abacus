@@ -24,11 +24,20 @@ class ABTest:
     - Bucketing (decrease number of points, normal distribution of metric of interest)
 
     Example:
-        >>> x = pd.read_csv('data.csv')
-        >>> ab_params = ABTestParams(...)
-        >>> ab_test = ABTest(x, ab_params)
-        >>> ab_test.test_welch()
-        {'stat': 5.172, 'p-value': 0.312, 'result': 0}
+
+    .. code-block:: python
+
+        from abacus.auto_ab.abtest import ABTest
+        from abacus.auto_ab.params import ABTestParams, DataParams, HypothesisParams
+
+        data_params = DataParams(...)
+        hypothesis_params = HypothesisParams(...)
+        ab_params = ABTestParams(data_params, hypothesis_params)
+
+        df = pd.read_csv('data.csv')
+        ab_test = ABTest(df, ab_params)
+        ab_test.test_welch()
+        # {'stat': 5.172, 'p-value': 0.312, 'result': 0}
     """
 
     def __init__(self,
@@ -257,9 +266,9 @@ class ABTest:
 
         transforms = self.params.data_params.transforms.tolist()
         if len(transforms) > 0:
-            transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.'
+            transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.\n'
         else:
-            transforms_str = 'No transformations applied.'
+            transforms_str = 'No transformations applied.\n'
 
         params = {
             'ztest_stat': ztest['stat'], 'ztest_pvalue': ztest['p-value'], 'ztest_result': ztest_res,
@@ -273,27 +282,27 @@ class ABTest:
         }
 
         output = '''
-        Parameters of experiment:
-        - Metric type: binary.
-        - Metric: {metric_name}.
-        - Errors: alpha = {alpha}, beta = {beta}.
-        - Alternative: {alternative}.
+Parameters of experiment:
+- Metric type: binary.
+- Metric: {metric_name}.
+- Errors: alpha = {alpha}, beta = {beta}.
+- Alternative: {alternative}.
 
-        Control group:
-        - Observations: {ctrl_obs}
-        - Conversion: {ctrl_conv}
+Control group:
+- Observations: {ctrl_obs}
+- Conversion: {ctrl_conv}
 
-        Treatment group:
-        - Observations: {trtm_obs}
-        - Conversion: {trtm_conv}
+Treatment group:
+- Observations: {trtm_obs}
+- Conversion: {trtm_conv}
 
-        {transforms}
+{transforms}
 
-        Following statistical tests are used:
-        - Z-test: {ztest_stat:.2f}, p-value = {ztest_pvalue:.4f}, {ztest_result}.
-        - Chi-square test: {chisq_stat:.2f}, p-value = {chisq_pvalue:.4f}, {chisq_result}.
+Following statistical tests are used:
+- Z-test: {ztest_stat:.2f}, p-value = {ztest_pvalue:.4f}, {ztest_result}.
+- Chi-square test: {chisq_stat:.2f}, p-value = {chisq_pvalue:.4f}, {chisq_result}.
 
-        {test_explanation}
+{test_explanation}
         '''.format(**params)
 
         return output
@@ -322,22 +331,22 @@ class ABTest:
 
         bucketing_str = ''
         if 'bucketing' in self.params.data_params.transforms:
-            bucketing_str = f'Number of buckets: {hypothesis.n_buckets}. '
+            bucketing_str = f'Number of buckets: {hypothesis.n_buckets}.\n'
 
         metric_transform_str = ''
         if 'metric transform' in self.params.data_params.transforms:
-            metric_transform_str = f'Metric transformation applied: {hypothesis.metric_transform.__name__}. '
+            metric_transform_str = f'Metric transformation applied: {hypothesis.metric_transform.__name__}.\n'
 
         variance_reduction_str = ''
         filter_outliers_str = ''
         if 'filter outliers' in self.params.data_params.transforms:
-            filter_outliers_str = f'Outliers filtering method applied: {hypothesis.filter_method}. '
+            filter_outliers_str = f'Outliers filtering method applied: {hypothesis.filter_method}.\n'
 
         transforms = self.params.data_params.transforms.tolist()
         if len(transforms) > 0:
-            transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.'
+            transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.\n'
         else:
-            transforms_str = 'No transformations applied.'
+            transforms_str = 'No transformations applied.\n'
 
         params = {
             'welch_stat': welch['stat'], 'welch_pvalue': welch['p-value'], 'welch_result': welch_res,
@@ -359,43 +368,42 @@ class ABTest:
         }
 
         output = '''
-        Parameters of experiment:
-        - Metric type: continuous.
-        - Metric: {metric_name}.
-        - Errors: alpha = {alpha}, beta = {beta}.
-        - Alternative: {alternative}.
+Parameters of experiment:
+- Metric type: continuous.
+- Metric: {metric_name}.
+- Errors: alpha = {alpha}, beta = {beta}.
+- Alternative: {alternative}.
 
-        Control group:
-        - Observations: {ctrl_obs}
-        - Mean: {ctrl_mean:.4f}
-        - Median: {ctrl_median:.4f}
-        - 25th quantile: {ctrl_25th:.4f}
-        - 75th quantile: {ctrl_75th:.4f}
-        - Minimum: {ctrl_min:.4f}
-        - Maximum: {ctrl_max:.4f}
-        - St.deviation: {ctrl_std:.4f}
-        - Variance: {ctrl_var:.4f}
+Control group:
+- Observations: {ctrl_obs}
+- Mean: {ctrl_mean:.4f}
+- Median: {ctrl_median:.4f}
+- 25th quantile: {ctrl_25th:.4f}
+- 75th quantile: {ctrl_75th:.4f}
+- Minimum: {ctrl_min:.4f}
+- Maximum: {ctrl_max:.4f}
+- St.deviation: {ctrl_std:.4f}
+- Variance: {ctrl_var:.4f}
 
-        Treatment group:
-        - Observations: {trtm_obs}
-        - Mean: {trtm_mean:.4f}
-        - Median: {trtm_median:.4f}
-        - 25th quantile: {trtm_25th:.4f}
-        - 75th quantile: {trtm_75th:.4f}
-        - Minimum: {trtm_min:.4f}
-        - Maximum: {trtm_max:.4f}
-        - St.deviation: {trtm_std:.4f}
-        - Variance: {trtm_var:.4f}
+Treatment group:
+- Observations: {trtm_obs}
+- Mean: {trtm_mean:.4f}
+- Median: {trtm_median:.4f}
+- 25th quantile: {trtm_25th:.4f}
+- 75th quantile: {trtm_75th:.4f}
+- Minimum: {trtm_min:.4f}
+- Maximum: {trtm_max:.4f}
+- St.deviation: {trtm_std:.4f}
+- Variance: {trtm_var:.4f}
 
-        {transforms}
-        Number of bootstrap iterations: {n_boot_samples}. {bucketing_str}{metric_transform_str}{filter_outliers_str}
+{transforms}
+Number of bootstrap iterations: {n_boot_samples}.\n{bucketing_str}{metric_transform_str}{filter_outliers_str}
+Following statistical tests are used:
+- Welch's t-test: {welch_stat:.2f}, p-value = {welch_pvalue:.4f}, {welch_result}.
+- Mann Whitney's U-test: {mwu_stat:.2f}, p-value = {mwu_pvalue:.4f}, {mwu_result}.
+- Bootstrap test: {boot_result}.
 
-        Following statistical tests are used:
-        - Welch's t-test: {welch_stat:.2f}, p-value = {welch_pvalue:.4f}, {welch_result}.
-        - Mann Whitney's U-test: {mwu_stat:.2f}, p-value = {mwu_pvalue:.4f}, {mwu_result}.
-        - Bootstrap test: {boot_result}.
-
-        {test_explanation}
+{test_explanation}
         '''.format(**params)
 
         return output
@@ -585,7 +593,7 @@ class ABTest:
         """Resplit dataframe.
 
         Returns:
-            ABTest: New instance of ``ABTest`` class with modified control and treatment.
+            ABTest: Instance of ``ABTest`` class with modified control and treatment.
         """
         resplit_params = ResplitParams(
             group_col=self.params.data_params.group_col,

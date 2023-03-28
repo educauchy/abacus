@@ -10,10 +10,19 @@ class VarianceReduction:
     As it is easier to apply variance reduction techniques directrly to experiment, all approaches should be called on ``ABTest`` class instance.
 
     Example:
-        >>> x = pd.read_csv('data.csv')
-        >>> ab_params = ABTestParams(...)
-        >>> ab_test = ABTest(x, ab_params)
-        >>> ab_test_vr = ab_test.cuped()
+
+    .. code-block:: python
+
+        from abacus.auto_ab.abtest import ABTest
+        from abacus.auto_ab.params import ABTestParams, DataParams, HypothesisParams
+
+        data_params = DataParams(...)
+        hypothesis_params = HypothesisParams(...)
+        ab_params = ABTestParams(data_params, hypothesis_params)
+
+        df = pd.read_csv('data.csv')
+        ab_test = ABTest(df, ab_params)
+        ab_test = ab_test.cuped()
     """
 
     def __init__(self) -> None:
@@ -53,7 +62,7 @@ class VarianceReduction:
     @classmethod
     def cupac(cls, x: pd.DataFrame, target_prev: str, target_now: str,
               factors_prev: List[str], factors_now: List[str], groups: str) -> pd.DataFrame:
-        """ Perform CUPED on target variable with covariate calculated
+        """Perform **CUPAC (Control Using Predictions As Convariate)** — CUPED on target variable with covariate calculated
         as a prediction from a linear regression model.
 
         Original paper: https://doordash.engineering/2020/06/08/improving-experimental-power-through-control-using-predictions-as-covariate-cupac/.
@@ -77,7 +86,7 @@ class VarianceReduction:
     @classmethod
     def cuped(cls, df: pd.DataFrame, target: str, groups: str,
               covariate: str) -> pd.DataFrame:
-        """ Perform CUPED on target variable with predefined covariate.
+        """Perform **CUPED (Controlled experiment Using Pre-Experiment Data)** on target variable with predefined covariate.
 
         Covariate has to be chosen with regard to the following restrictions:
 
