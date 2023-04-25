@@ -59,7 +59,7 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
                                                  guests_with_splits[metric_col]*grid_element.inject, 
                                                  axis=0,
                                                  inplace=True)
-            row_dict["MDE"] = [grid_element.inject]
+            row_dict["Effect"] = [grid_element.inject]
 
         self.abtest_params.data_params.group_col = split_column
         self.abtest_params.data_params.target = metric_col
@@ -81,7 +81,7 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
         for metric in self._experiment_params.metrics_names:
             for split in self.group_sizes:
                 passed_mde = aggregated_df[(aggregated_df.metric == metric) &
-                                           (aggregated_df.split_rate == split)]["MDE"].values
+                                           (aggregated_df.split_rate == split)]["Effect"].values
                 last_experiment = min(passed_mde)
                 passed_injects = np.setdiff1d(self._experiment_params.injects, passed_mde)
                 if len(passed_injects) > 0:
@@ -107,7 +107,7 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
             pandas.DataFrame: DataFrame with II type error.
         """
         res_agg = (df_with_calc
-                   .groupby(by=["metric", "split_rate", "MDE"])
+                   .groupby(by=["metric", "split_rate", "Effect"])
                    .agg(sum=("effect_significance", sum),
                         count=("effect_significance", "count"))
                   )
@@ -180,7 +180,7 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
 
                         calculated_experiments = ((beta_scores["split_rate"] == group_size) &
                                                        (beta_scores["metric"] == metric_name) &
-                                                       (beta_scores["MDE"] == inject))
+                                                       (beta_scores["Effect"] == inject))
                         res_inject_agg = self._beta_score_calculation(beta_scores[calculated_experiments])
                         res_agg = res_agg.append(res_inject_agg)
                         # check if beta score higher then min_beta
@@ -202,10 +202,10 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
                                                 self.experiment_params.max_beta_score)
         # append passed experiments
         res_agg = self._fill_passed_experiments(res_agg)
-        res_agg["MDE"] = res_agg["MDE"].apply(lambda mde: f"{round((mde//1.0 * 100 + mde%1.0 * 100) - 100, 5)}%")
+        res_agg["Effect"] = res_agg["Effect"].apply(lambda mde: f"{round((mde//1.0 * 100 + mde%1.0 * 100) - 100, 5)}%")
         res_pivoted = pd.pivot_table(res_agg,
                                      values="beta",
-                                     index=["metric", "MDE"],
+                                     index=["metric", "Effect"],
                                      columns="split_rate",
                                      aggfunc=lambda x: x)
         if fill_with_default:
