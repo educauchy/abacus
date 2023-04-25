@@ -4,6 +4,7 @@ import copy
 import warnings
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import IsolationForest
 from scipy.stats import mannwhitneyu, ttest_ind, shapiro, mode, t, chisquare, norm
 from statsmodels.stats.proportion import proportions_ztest
 from abacus.auto_ab.graphics import Graphics
@@ -37,7 +38,9 @@ class ABTest:
         self.params = params
         self.__dataset = dataset
 
-        if dataset is not None:
+        if dataset is not None \
+                and len(params.data_params.transforms) == 0\
+                and params.hypothesis_params.metric_type in ('solid', 'binary'):
             self.__check_required_columns(dataset, 'init')
             self.params.data_params.control = self.__get_group(self.params.data_params.control_name, self.dataset)
             self.params.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, self.dataset)
@@ -64,34 +67,27 @@ class ABTest:
         """
         cols: List[str] = []
         if method == 'init':
-            cols = ['id_col', 'group_col']
+            cols = [self.params.data_params.id_col, self.params.data_params.group_col]
             if self.params.hypothesis_params.metric_type == 'solid':
-                cols.append('target')
+                cols.append(self.params.data_params.target)
             elif self.params.hypothesis_params.metric_type == 'binary':
-                cols.append('target_flg')
+                cols.append(self.params.data_params.target_flg)
             elif self.params.hypothesis_params.metric_type == 'ratio':
-                cols.extend(['numerator', 'denominator'])
+                cols.extend([self.params.data_params.numerator,
+                             self.params.data_params.denominator])
         elif method == 'cuped':
-            cols = ['covariate']
+            cols = [self.params.data_params.covariate]
         elif method == 'cupac':
             cols = ['predictors_prev', 'target_prev', 'predictors']
         elif method == 'resplit_df':
-            cols = ['strata_col']
+            cols = [self.params.data_params.strata_col]
 
         is_valid_col: bool = True
         invalid_cols = []
         for col in cols:
-            curr_col = getattr(self.params.data_params, col)
-            if isinstance(curr_col, str) and curr_col is not None:
-                if curr_col not in df:
-                    is_valid_col = False
-                    invalid_cols.append(curr_col)
-
-            elif isinstance(curr_col, list) and curr_col is not None:
-                for curr_c in curr_col:
-                    if curr_c not in df:
-                        is_valid_col = False
-                        invalid_cols.append(curr_c)
+            if col not in df.columns:
+                is_valid_col = False
+                invalid_cols.append(col)
 
         if not is_valid_col:
             raise ValueError(f'The following columns are not in dataframe: {*invalid_cols,}')
@@ -158,26 +154,29 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
-        t_stat_empirical = (ctrl_mean - treat_mean) / (ctrl_var / ctrl_size + treat_var / treat_size) ** (1 / 2)
-        df = ctrl_size + treat_size - 2
+        t_stat_empirical = (treat_mean - ctrl_mean) / (ctrl_var / ctrl_size + treat_var / treat_size) ** (1 / 2)
+        # df = ctrl_size + treat_size - 2
+        df = (ctrl_var / ctrl_size + treat_var / treat_size) ** 2 / \
+             (ctrl_var ** 2 / (ctrl_size ** 2 * (ctrl_size - 1)) + \
+              (treat_var ** 2 / (treat_size ** 2 * (treat_size - 1))))
 
         test_result: int = 0
         if self.params.hypothesis_params.alternative == 'two-sided':
-            lcv, rcv = t.ppf(self.params.hypothesis_params.alpha / 2, df), \
-                t.ppf(1.0 - self.params.hypothesis_params.alpha / 2, df)
+            lcv, rcv = t.ppf(self.params.hypothesis_params.alpha / 2, df=df, loc=ctrl_mean, scale=np.sqrt(ctrl_var)), \
+                t.ppf(1.0 - self.params.hypothesis_params.alpha / 2, df=df, loc=ctrl_mean, scale=np.sqrt(ctrl_var))
             if not (lcv < t_stat_empirical < rcv):
                 test_result = 1
         elif self.params.hypothesis_params.alternative == 'less':
-            lcv = t.ppf(self.params.hypothesis_params.alpha, df)
+            lcv = t.ppf(self.params.hypothesis_params.alpha, df=df, loc=ctrl_mean, scale=np.sqrt(ctrl_var))
             if t_stat_empirical < lcv:
                 test_result = 1
         elif self.params.hypothesis_params.alternative == 'greater':
-            rcv = t.ppf(1 - self.params.hypothesis_params.alpha, df)
+            rcv = t.ppf(1 - self.params.hypothesis_params.alpha, df=df, loc=ctrl_mean, scale=np.sqrt(ctrl_var))
             if t_stat_empirical > rcv:
                 test_result = 1
 
         result = {
-            'stat': None,
+            'stat': t_stat_empirical,
             'p-value': None,
             'result': test_result
         }
@@ -230,23 +229,181 @@ class ABTest:
 
         return mean, var
 
+    def __report_binary(self) -> str:
+        hypothesis = self.params.hypothesis_params
+        ctrl = self.params.data_params.control
+        trtm = self.params.data_params.treatment
+
+        chisq = self.test_chisquare()
+        chisq_res = 'H0 is not rejected' if chisq['result'] == 0 else 'H0 is rejected'
+        ztest = self.test_z_proportions()
+        ztest_res = 'H0 is not rejected' if ztest['result'] == 0 else 'H0 is rejected'
+
+        test_result = chisq['result'] + ztest['result']
+        if test_result == 2:
+            test_explanation = 'All two stat. tests showed that H0 is rejected.'
+        elif test_result == 1:
+            test_explanation = 'One out of two stat. tests showed that H0 is not rejected.'
+        elif test_result == 0:
+            test_explanation = 'All three stat. tests showed that H0 is not rejected.'
+
+        transforms = self.params.data_params.transforms.tolist()
+        if len(transforms) > 0:
+            transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.'
+        else:
+            transforms_str = 'No transformations applied.'
+
+        params = {
+            'ztest_stat': ztest['stat'], 'ztest_pvalue': ztest['p-value'], 'ztest_result': ztest_res,
+            'chisq_stat': chisq['stat'], 'chisq_pvalue': chisq['p-value'], 'chisq_result': chisq_res,
+            'ctrl_conv': sum(ctrl) / len(ctrl), 'trtm_conv': sum(trtm) / len(trtm),
+            'ctrl_obs': len(ctrl), 'trtm_obs': len(trtm),
+            'alpha': hypothesis.alpha, 'beta': hypothesis.beta, 'alternative': hypothesis.alternative,
+            'metric_name': hypothesis.metric_name,
+            'transforms': transforms_str,
+            'test_explanation': test_explanation
+        }
+
+        output = '''
+        Parameters of experiment:
+        - Metric type: binary.
+        - Metric: {metric_name}.
+        - Errors: alpha = {alpha}, beta = {beta}.
+        - Alternative: {alternative}.
+
+        Control group:
+        - Observations: {ctrl_obs}
+        - Conversion: {ctrl_conv}
+
+        Treatment group:
+        - Observations: {trtm_obs}
+        - Conversion: {trtm_conv}
+
+        {transforms}
+
+        Following statistical tests are used:
+        - Z-test: {ztest_stat:.2f}, p-value = {ztest_pvalue:.4f}, {ztest_result}.
+        - Chi-square test: {chisq_stat:.2f}, p-value = {chisq_pvalue:.4f}, {chisq_result}.
+
+        {test_explanation}
+        '''.format(**params)
+
+        return output
+
+    def __report_solid(self) -> str:
+        hypothesis = self.params.hypothesis_params
+        ctrl = self.params.data_params.control
+        trtm = self.params.data_params.treatment
+
+        welch = self.test_welch()
+        welch_res = 'H0 is not rejected' if welch['result'] == 0 else 'H0 is rejected'
+        mwu = self.test_mannwhitney()
+        mwu_res = 'H0 is not rejected' if mwu['result'] == 0 else 'H0 is rejected'
+        boot = self.test_boot_confint()
+        boot_res = 'H0 is not rejected' if boot['result'] == 0 else 'H0 is rejected'
+
+        test_result = welch['result'] + mwu['result'] + boot['result']
+        if test_result == 3:
+            test_explanation = 'All three stat. tests showed that H0 is rejected.'
+        elif test_result == 2:
+            test_explanation = 'Two out of three stat. tests showed that H0 is rejected.'
+        elif test_result == 1:
+            test_explanation = 'Two out of three stat. tests showed that H0 is not rejected.'
+        elif test_result == 0:
+            test_explanation = 'All three stat. tests showed that H0 is not rejected.'
+
+        bucketing_str = ''
+        if 'bucketing' in self.params.data_params.transforms:
+            bucketing_str = f'Number of buckets: {hypothesis.n_buckets}. '
+
+        metric_transform_str = ''
+        if 'metric transform' in self.params.data_params.transforms:
+            metric_transform_str = f'Metric transformation applied: {hypothesis.metric_transform.__name__}. '
+
+        variance_reduction_str = ''
+        filter_outliers_str = ''
+        if 'filter outliers' in self.params.data_params.transforms:
+            filter_outliers_str = f'Outliers filtering method applied: {hypothesis.filter_method}. '
+
+        transforms = self.params.data_params.transforms.tolist()
+        if len(transforms) > 0:
+            transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.'
+        else:
+            transforms_str = 'No transformations applied.'
+
+        params = {
+            'welch_stat': welch['stat'], 'welch_pvalue': welch['p-value'], 'welch_result': welch_res,
+            'mwu_stat': mwu['stat'], 'mwu_pvalue': mwu['p-value'], 'mwu_result': mwu_res,
+            'boot_result': boot_res,
+            'ctrl_obs': len(ctrl), 'trtm_obs': len(trtm),
+            'ctrl_mean': np.mean(ctrl), 'ctrl_median': np.median(ctrl), 'ctrl_25th': np.quantile(ctrl, 0.25),
+            'ctrl_75th': np.quantile(ctrl, 0.75), 'ctrl_min': np.min(ctrl), 'ctrl_max': np.max(ctrl),
+            'ctrl_std': np.std(trtm), 'ctrl_var': np.var(trtm),
+            'trtm_mean': np.mean(trtm), 'trtm_median': np.median(trtm), 'trtm_25th': np.quantile(trtm, 0.25),
+            'trtm_75th': np.quantile(trtm, 0.75), 'trtm_min': np.min(trtm), 'trtm_max': np.max(trtm),
+            'trtm_std': np.std(trtm), 'trtm_var': np.var(trtm),
+            'alpha': hypothesis.alpha, 'beta': hypothesis.beta, 'alternative': hypothesis.alternative,
+            'metric_name': hypothesis.metric_name, 'bucketing_str': bucketing_str,
+            'transforms': transforms_str, 'metric_transform_str': metric_transform_str,
+            'filter_outliers_str': filter_outliers_str,
+            'n_boot_samples': hypothesis.n_boot_samples,
+            'test_explanation': test_explanation
+        }
+
+        output = '''
+        Parameters of experiment:
+        - Metric type: continuous.
+        - Metric: {metric_name}.
+        - Errors: alpha = {alpha}, beta = {beta}.
+        - Alternative: {alternative}.
+
+        Control group:
+        - Observations: {ctrl_obs}
+        - Mean: {ctrl_mean:.4f}
+        - Median: {ctrl_median:.4f}
+        - 25th quantile: {ctrl_25th:.4f}
+        - 75th quantile: {ctrl_75th:.4f}
+        - Minimum: {ctrl_min:.4f}
+        - Maximum: {ctrl_max:.4f}
+        - St.deviation: {ctrl_std:.4f}
+        - Variance: {ctrl_var:.4f}
+
+        Treatment group:
+        - Observations: {trtm_obs}
+        - Mean: {trtm_mean:.4f}
+        - Median: {trtm_median:.4f}
+        - 25th quantile: {trtm_25th:.4f}
+        - 75th quantile: {trtm_75th:.4f}
+        - Minimum: {trtm_min:.4f}
+        - Maximum: {trtm_max:.4f}
+        - St.deviation: {trtm_std:.4f}
+        - Variance: {trtm_var:.4f}
+
+        {transforms}
+        Number of bootstrap iterations: {n_boot_samples}. {bucketing_str}{metric_transform_str}{filter_outliers_str}
+
+        Following statistical tests are used:
+        - Welch's t-test: {welch_stat:.2f}, p-value = {welch_pvalue:.4f}, {welch_result}.
+        - Mann Whitney's U-test: {mwu_stat:.2f}, p-value = {mwu_pvalue:.4f}, {mwu_result}.
+        - Bootstrap test: {boot_result}.
+
+        {test_explanation}
+        '''.format(**params)
+
+        return output
+
     def bucketing(self) -> ABTest:
         """Performs bucketing in order to accelerate results computation.
 
         Returns:
             ABTest: New instance of ``ABTest`` class with modified control and treatment.
         """
-        dataset_new = copy.deepcopy(self.__dataset)
         params_new = copy.deepcopy(self.params)
-
         params_new.data_params.control = self.__bucketize(self.params.data_params.control)
         params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
-        
-        dataset_new.control = params_new.data_params.control
-        dataset_new.treatment = params_new.data_params.treatment
         params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'bucketing')
 
-        return ABTest(dataset_new, params_new)
+        return ABTest(None, params_new)
 
     def cuped(self) -> ABTest:
         """Performs CUPED for variance reduction.
@@ -288,6 +445,27 @@ class ABTest:
 
         return ABTest(result_df, params_new)
 
+    def filter_outliers(self) -> ABTest:
+        target = self.__dataset[[self.params.data_params.target]].values
+        # print(f'Rows before: {self.__dataset.shape[0]}')
+
+        if self.params.hypothesis_params.filter_method == 'isolation_forest':
+            not_outlier_index = IsolationForest(random_state=0).fit_predict(target) == 1
+            dataset_new = self.__dataset.loc[not_outlier_index].reset_index(drop=True)
+
+        if self.params.hypothesis_params.filter_method == 'top_5':
+            quantile95 = np.quantile(target, 0.95)
+            not_outlier_index = self.__dataset[self.params.data_params.target] <= quantile95
+            dataset_new = self.__dataset.loc[not_outlier_index].reset_index(drop=True)
+
+        # print(f'Rows left: {dataset_new.shape[0]}')
+        params_new = copy.deepcopy(self.params)
+        params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'filter outliers')
+        params_new.data_params.control = self.__get_group(self.params.data_params.control_name, dataset_new)
+        params_new.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, dataset_new)
+
+        return ABTest(dataset_new, params_new)
+
     def linearization(self) -> ABTest:
         """Creates linearized continuous metric based on ratio-metric.
         Important: there is an assumption that all data is already grouped by user
@@ -301,7 +479,6 @@ class ABTest:
 
         dataset_new = copy.deepcopy(self.__dataset)
         params_new = copy.deepcopy(self.params)
-
         num_col, den_col = 'num', 'den'
 
         if self.params.hypothesis_params.metric_type == 'ratio':
@@ -335,7 +512,7 @@ class ABTest:
         dataset_new = dataset_new.merge(self.__dataset[[self.params.data_params.id_col,
                                                         new_target_name]],
                                         how='left', on=self.params.data_params.id_col)
-        dataset_new = dataset_new.drop_duplicates(subset=['id'])
+        dataset_new = dataset_new.drop_duplicates(subset=[self.params.data_params.id_col])
         params_new.data_params.target = new_target_name
         params_new.data_params.control = dataset_new.loc[
                                             dataset_new[self.params.data_params.group_col] == self.params.data_params.control_name,
@@ -344,6 +521,32 @@ class ABTest:
                                             dataset_new[self.params.data_params.group_col] == self.params.data_params.treatment_name,
                                             new_target_name].to_numpy()
         params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'linearization')
+
+        return ABTest(dataset_new, params_new)
+
+    def metric_transform(self) -> ABTest:
+        if self.params.hypothesis_params.metric_transform is None:
+            return ABTest(self.__dataset, self.params)
+
+        dataset_new = copy.deepcopy(self.__dataset)
+        target = self.params.data_params.target
+        group_col = self.params.data_params.group_col
+
+        transform = self.params.hypothesis_params.metric_transform
+        transform_name = transform.__name__
+
+        control_name = self.params.data_params.control_name
+        control_flg = dataset_new[group_col] == control_name
+        dataset_new.loc[control_flg, target] = transform(dataset_new.loc[control_flg, target].to_numpy())
+
+        treatment_name = self.params.data_params.treatment_name
+        treatment_flg = dataset_new[group_col] == treatment_name
+        dataset_new.loc[treatment_flg, target] = transform(dataset_new.loc[treatment_flg, target].to_numpy())
+
+        params_new = copy.deepcopy(self.params)
+        params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'metric transform')
+        params_new.data_params.control = transform(dataset_new.loc[control_flg, target].to_numpy())
+        params_new.data_params.treatment = transform(dataset_new.loc[treatment_flg, target].to_numpy())
 
         return ABTest(dataset_new, params_new)
 
@@ -356,100 +559,21 @@ class ABTest:
         - hypothesis_params.strategy
         """
         if self.params.hypothesis_params.metric_type == 'solid':
-            if self.params.hypothesis_params.metric_name == 'mean' \
-                or self.params.hypothesis_params.metric == 'mean':
-                Graphics.plot_mean_experiment(self.params)
-            elif self.params.hypothesis_params.metric_name == 'median' \
-                or self.params.hypothesis_params.metric == 'median':
-                Graphics.plot_median_experiment(self.params)
+            Graphics.plot_solid_experiment(self.params)
 
         if self.params.hypothesis_params.metric_type == 'binary':
             Graphics.plot_binary_experiment(self.params)
 
     def report(self) -> None:
-        hypothesis = self.params.hypothesis_params
-        ctrl = self.params.data_params.control
-        trtm = self.params.data_params.treatment
+        report_output = 'Report for ratio metric currently not supported.'
 
-        welch = self.test_welch()
-        welch_res = 'H0 is not rejected' if welch['result'] == 0 else 'H0 is rejected'
-        mwu = self.test_mannwhitney()
-        mwu_res = 'H0 is not rejected' if mwu['result'] == 0 else 'H0 is rejected'
-        boot = self.test_boot_confint()
-        boot_res = 'H0 is not rejected' if boot['result'] == 0 else 'H0 is rejected'
+        if self.params.hypothesis_params.metric_type == 'solid':
+            report_output = self.__report_solid()
 
-        test_result = welch['result'] + mwu['result'] + boot['result']
-        if test_result == 3:
-            test_explanation = 'All three stat. tests showed that H0 is rejected.'
-        elif test_result == 2:
-            test_explanation = 'Two out of three stat. tests showed that H0 is rejected.'
-        elif test_result == 1:
-            test_explanation = 'Two out of three stat. tests showed that H0 is not rejected.'
-        elif test_result == 0:
-            test_explanation = 'All three stat. tests showed that H0 is not rejected.'
+        if self.params.hypothesis_params.metric_type == 'binary':
+            report_output = self.__report_binary()
 
-        bucketing_str = ''
-        if 'bucketing' in self.params.data_params.transforms:
-            bucketing_str = f'Number of buckets: {hypothesis.n_buckets}'
-
-        transforms = self.params.data_params.transforms.tolist()
-        if len(transforms) > 0:
-            transforms_str = 'Transformations applied: ' + ' -> '.join(transforms)
-        else:
-            transforms_str = 'No transformations applied.'
-
-        params = {
-            'welch_stat': welch['stat'], 'welch_pvalue': welch['p-value'], 'welch_result': welch_res,
-            'mwu_stat': mwu['stat'], 'mwu_pvalue': mwu['p-value'], 'mwu_result': mwu_res,
-            'boot_result': boot_res,
-            'ctrl_obs': len(ctrl), 'trtm_obs': len(trtm),
-            'ctrl_mean': np.mean(ctrl), 'ctrl_median': np.median(ctrl), 'ctrl_25th': np.quantile(ctrl, 0.25),
-            'ctrl_75th': np.quantile(ctrl, 0.75), 'ctrl_min': np.min(ctrl), 'ctrl_max': np.max(ctrl),
-            'trtm_mean': np.mean(trtm), 'trtm_median': np.median(trtm), 'trtm_25th': np.quantile(trtm, 0.25),
-            'trtm_75th': np.quantile(trtm, 0.75), 'trtm_min': np.min(trtm), 'trtm_max': np.max(trtm),
-            'alpha': hypothesis.alpha, 'beta': hypothesis.beta, 'alternative': hypothesis.alternative,
-            'metric_name': hypothesis.metric_name, 'bucketing_str': bucketing_str,
-            'transforms': transforms_str,
-            'n_boot_samples': hypothesis.n_boot_samples,
-            'test_explanation': test_explanation
-        }
-
-        output = '''
-        Parameters of experiment:
-        - Metric: {metric_name}.
-        - Errors: alpha = {alpha}, beta = {beta}.
-        - Alternative: {alternative}.
-        
-        Control group:
-        - Observations: {ctrl_obs}
-        - Mean: {ctrl_mean:.4f}
-        - Median: {ctrl_median:.4f}
-        - 25th quantile: {ctrl_25th:.4f}
-        - 75th quantile: {ctrl_75th:.4f}
-        - Minimum: {ctrl_min:.4f}
-        - Maximum: {ctrl_max:.4f}
-        
-        Treatment group:
-        - Observations: {trtm_obs}
-        - Mean: {trtm_mean:.4f}
-        - Median: {trtm_median:.4f}
-        - 25th quantile: {trtm_25th:.4f}
-        - 75th quantile: {trtm_75th:.4f}
-        - Minimum: {trtm_min:.4f}
-        - Maximum: {trtm_max:.4f}
-
-        {transforms}
-        Number of bootstrap iterations: {n_boot_samples}. {bucketing_str}
-
-        Following statistical tests are used:
-        - Welch's t-test: {welch_stat:.2f}, p-value = {welch_pvalue:.4f}, {welch_result}.
-        - Mann Whitney's U-test: {mwu_stat:.2f}, p-value = {mwu_pvalue:.4f}, {mwu_result}.
-        - Bootstrap test: {boot_result}.
-        
-        {test_explanation}
-        '''.format(**params)
-
-        print(output)
+        print(report_output)
 
     def resplit_df(self) -> ABTest:
         """Resplit dataframe.
@@ -467,7 +591,7 @@ class ABTest:
         return ABTest(new_dataset, self.params)
 
     def test_boot_fp(self) -> stat_test_typing:
-        """ Performs bootstrap hypothesis testing by calculation by calculation of false positives.
+        """ Performs bootstrap hypothesis testing by calculation of false positives.
 
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
@@ -1093,9 +1217,13 @@ class ABTest:
         x = self.__get_group(self.params.data_params.control_name, self.dataset)
         y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
-        count = np.array([sum(x), sum(y)])
-        nobs = np.array([len(x), len(y)])
-        stat, pvalue = proportions_ztest(count, nobs)
+        count = np.array([sum(y), sum(x)])
+        nobs = np.array([len(y), len(x)])
+
+        alternative = self.params.hypothesis_params.alternative
+        if alternative != 'two-sided':
+            alternative = 'smaller' if alternative == 'less' else 'larger'
+        stat, pvalue = proportions_ztest(count, nobs, alternative=alternative)
 
         test_result: int = 0
         if pvalue <= self.params.hypothesis_params.alpha:
