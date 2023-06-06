@@ -10,7 +10,8 @@ class ParallelExperiments:
                  dataset: pd.DataFrame,
                  id_col: str = 'id',
                  method: str = 'hashing',
-                 n_buckets: int = 200) -> None:
+                 n_buckets: int = 200
+                 ) -> None:
         self.dataset = dataset
         self.id_col = id_col
         self.method = method
@@ -22,7 +23,9 @@ class ParallelExperiments:
         self.dataset['bucket_id'] = np.remainder(self.dataset[self.id_col].to_numpy(),
                                                  self.n_buckets)
 
-    def _hashing(self, salt: str, hash_func: Optional[str] = 'blake2b') -> None:
+    def _hashing(self,
+                 salt: str,
+                 hash_func: Optional[str] = 'blake2b') -> None:
         """ Creates buckets using hash function approach.
 
         Algorithm:

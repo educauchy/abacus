@@ -30,18 +30,18 @@ class DataParams:
 
 @dataclass(config=ValidationConfig)
 class HypothesisParams:
-    alpha: float = 0.05
-    beta: float = 0.2
-    alternative: str = 'two-sided'  # less, greater, two-sided
-    metric_type: str = 'solid'
-    metric_name: str = 'mean'
+    alpha: Optional[float] = 0.05
+    beta: Optional[float] = 0.2
+    alternative: Optional[str] = 'two-sided'  # less, greater, two-sided
+    metric_type: Optional[str] = 'continuous'
+    metric_name: Optional[str] = 'mean'
     filter_method: Optional[str] = 'top_5'
     metric: Optional[Callable[[Any], float]] = np.mean
     metric_transform: Optional[Callable[[np.ndarray], np.ndarray]] = None
     metric_transform_info: Optional[Dict[str, Dict[str, Any]]] = None
     n_boot_samples: Optional[int] = 200
     n_buckets: Optional[int] = 50
-    strata: Optional[str] = 'country'
+    strata: Optional[str] = ''
     strata_weights: Optional[dict] = Field(default={1: 0.8, 2: 0.2})
 
     def __post_init__(self):

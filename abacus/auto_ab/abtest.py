@@ -12,9 +12,7 @@ from abacus.auto_ab.variance_reduction import VarianceReduction
 from abacus.auto_ab.params import ABTestParams
 from abacus.resplitter.resplit_builder import ResplitBuilder
 from abacus.resplitter.params import ResplitParams
-
-metric_name_typing = Union[str, Callable[[np.ndarray], Union[int, float]]]
-stat_test_typing = Dict[str, Optional[Union[int, float]]]
+from abacus import types
 
 
 class ABTest:
@@ -138,7 +136,7 @@ class ABTest:
         return x_new
 
     def _manual_ttest(self, ctrl_mean: float, ctrl_var: float, ctrl_size: int,
-                      treat_mean: float, treat_var: float, treat_size: int) -> stat_test_typing:
+                      treat_mean: float, treat_var: float, treat_size: int) -> types.StatTestType:
         """Performs Welch's t-test based on aggregation of metrics instead of datasets.
 
         For empirical calculation of T-statistic we need: expectation, variance, array size for each group.
@@ -559,7 +557,7 @@ class ABTest:
         - hypothesis_params.strategy
         """
         if self.params.hypothesis_params.metric_type == 'solid':
-            Graphics.plot_solid_experiment(self.params)
+            Graphics.plot_continuous_experiment(self.params)
 
         if self.params.hypothesis_params.metric_type == 'binary':
             Graphics.plot_binary_experiment(self.params)
@@ -590,7 +588,7 @@ class ABTest:
 
         return ABTest(new_dataset, self.params)
 
-    def test_boot_fp(self) -> stat_test_typing:
+    def test_boot_fp(self) -> types.StatTestType:
         """ Performs bootstrap hypothesis testing by calculation of false positives.
 
         Returns:
@@ -631,7 +629,7 @@ class ABTest:
         }
         return result
 
-    def test_boot_confint(self) -> stat_test_typing:
+    def test_boot_confint(self) -> types.StatTestType:
         """ Performs bootstrap confidence interval and zero
         statistical significance.
 
@@ -682,7 +680,7 @@ class ABTest:
         }
         return result
 
-    def test_boot_ratio(self) -> stat_test_typing:
+    def test_boot_ratio(self) -> types.StatTestType:
         """Performs bootstrap for ratio-metric.
 
         Returns:
@@ -734,7 +732,7 @@ class ABTest:
         }
         return result
 
-    def test_boot_welch(self) -> stat_test_typing:
+    def test_boot_welch(self) -> types.StatTestType:
         r""" Performs Welch's t-test for independent samples with unequal number of observations and variance.
 
         Welch's t-test is used as a wider approaches with less restrictions on samples size as in Student's t-test.
@@ -775,7 +773,7 @@ class ABTest:
         }
         return result
 
-    def test_buckets(self) -> stat_test_typing:
+    def test_buckets(self) -> types.StatTestType:
         """ Performs buckets hypothesis testing.
 
         Returns:
@@ -813,7 +811,7 @@ class ABTest:
         }
         return result
 
-    def test_chisquare(self) -> stat_test_typing:
+    def test_chisquare(self) -> types.StatTestType:
         """Performs Chi-Square test.
 
         Returns:
@@ -837,7 +835,7 @@ class ABTest:
         }
         return result
 
-    def test_delta_ratio(self) -> stat_test_typing:
+    def test_delta_ratio(self) -> types.StatTestType:
         """ Delta method with bias correction for ratios.
 
         Source: https://arxiv.org/pdf/1803.06336.pdf.
@@ -853,7 +851,7 @@ class ABTest:
 
         return self._manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
 
-    def test_mannwhitney(self) -> stat_test_typing:
+    def test_mannwhitney(self) -> types.StatTestType:
         r"""Performs Mann-Whitney U test.
 
         Test works on continues metrics and their ranks.
@@ -891,7 +889,7 @@ class ABTest:
         }
         return result
 
-    def test_strat_confint(self) -> stat_test_typing:
+    def test_strat_confint(self) -> types.StatTestType:
         """ Performs stratification with confidence interval.
 
         Returns:
@@ -979,7 +977,7 @@ class ABTest:
         }
         return result
 
-    def test_strat_confint_new(self) -> stat_test_typing:
+    def test_strat_confint_new(self) -> types.StatTestType:
         """ Performs stratification with confidence interval.
 
         Returns:
@@ -1080,7 +1078,7 @@ class ABTest:
         }
         return result
 
-    def test_strat_confint_old(self) -> stat_test_typing:
+    def test_strat_confint_old(self) -> types.StatTestType:
         """ Performs stratification with confidence interval.
 
         Returns:
@@ -1154,7 +1152,7 @@ class ABTest:
         }
         return result
 
-    def test_taylor_ratio(self) -> stat_test_typing:
+    def test_taylor_ratio(self) -> types.StatTestType:
         """ Calculate expectation and variance of ratio for each group and then use t-test for hypothesis testing.
 
         Source: http://www.stat.cmu.edu/~hseltman/files/ratio.pdf.
@@ -1170,7 +1168,7 @@ class ABTest:
 
         return self._manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
 
-    def test_welch(self) -> stat_test_typing:
+    def test_welch(self) -> types.StatTestType:
         """Performs Welch's t-test.
 
         Returns:
@@ -1201,7 +1199,7 @@ class ABTest:
         }
         return result
 
-    def test_z_proportions(self) -> stat_test_typing:
+    def test_z_proportions(self) -> types.StatTestType:
         r"""Performs z-test for proportions.
 
         The two-proportions z-test is used to compare two observed proportions.

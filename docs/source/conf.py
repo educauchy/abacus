@@ -12,6 +12,7 @@ import sys
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+
 # -- Path setup --------------------------------------------------------------
 
 sys.path.insert(0, os.path.abspath("../../"))
@@ -21,15 +22,18 @@ sys.path.insert(0, os.path.abspath("../../"))
 
 project = "ABacus"
 copyright = """
-2023 Glowbyte
+2023 Data Sapience
 """
-author = "Glowbyte. Advanced Analytics team"
+author = "Data Sapience. Advanced Analytics team"
 
 # The full version, including alpha/beta/rc tags
 # from abacus import __version__  # noqa
-#
+
 # release = __version__
 # version = __version__
+# release = '0.0.1'
+# version = '0.0.1'
+
 
 # -- General configuration ---------------------------------------------------
 

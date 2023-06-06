@@ -9,7 +9,10 @@ class VarianceReduction:
         pass
 
     @staticmethod
-    def _target_encoding(x: pd.DataFrame, encoding_columns: List[str], target_column: str) -> pd.DataFrame:
+    def _target_encoding(x: pd.DataFrame,
+                         encoding_columns: List[str],
+                         target_column: str
+                         ) -> pd.DataFrame:
         """Encodes target column.
         """
         for col in x[encoding_columns].select_dtypes(include='O').columns:
@@ -18,8 +21,11 @@ class VarianceReduction:
         return x
 
     @staticmethod
-    def _predict_target(x: pd.DataFrame, target_prev: str,
-                        factors_prev: List[str], factors_now: List[str]) -> pd.Series:
+    def _predict_target(x: pd.DataFrame,
+                        target_prev_col: str,
+                        factors_prev_cols: List[str],
+                        factors_now_cols: List[str]
+                        ) -> pd.Series:
         """Covariate prediction with linear regression model.
 
         Args:
@@ -31,19 +37,25 @@ class VarianceReduction:
         Returns:
             pandas.Series: Pandas Series with predicted values
         """
-        y = x[target_prev]
-        x_train = x[factors_prev]
+        y = x[target_prev_col]
+        x_train = x[factors_prev_cols]
         model = sm.OLS(y, x_train)
         results = model.fit()
 
         print(results.summary())
-        x_predict = x[factors_now]
+        x_predict = x[factors_now_cols]
 
         return results.predict(x_predict)
 
     @classmethod
-    def cupac(cls, x: pd.DataFrame, target_prev: str, target_now: str,
-              factors_prev: List[str], factors_now: List[str], groups: str) -> pd.DataFrame:
+    def cupac(cls,
+              x: pd.DataFrame,
+              target_prev_col: str,
+              target_now_col: str,
+              factors_prev_cols: List[str],
+              factors_now_cols: List[str],
+              groups_col: str
+              ) -> pd.DataFrame:
         """ Perform CUPED on target variable with covariate calculated
         as a prediction from a linear regression model.
 
@@ -60,14 +72,18 @@ class VarianceReduction:
         Returns:
             pandas.DataFrame: Pandas DataFrame with additional columns: target_pred and target_now_cuped
         """
-        x = cls._target_encoding(x, list(set(factors_prev + factors_now)), target_prev)
-        x.loc[:, 'target_pred'] = cls._predict_target(x, target_prev, factors_prev, factors_now)
-        x_new = cls.cuped(x, target_now, groups, 'target_pred')
+        x = cls._target_encoding(x, list(set(factors_prev_cols + factors_now_cols)), target_prev_col)
+        x.loc[:, 'target_pred'] = cls._predict_target(x, target_prev_col, factors_prev_cols, factors_now_cols)
+        x_new = cls.cuped(x, target_now_col, groups_col, 'target_pred')
         return x_new
 
     @classmethod
-    def cuped(cls, df: pd.DataFrame, target: str, groups: str,
-              covariate: str) -> pd.DataFrame:
+    def cuped(cls,
+              df: pd.DataFrame,
+              target_col: str,
+              groups_col: str,
+              covariate_col: str
+              ) -> pd.DataFrame:
         """ Perform CUPED on target variable with predefined covariate.
 
         Covariate has to be chosen with regard to the following restrictions:
@@ -89,13 +105,13 @@ class VarianceReduction:
         """
         x = df.copy()
 
-        cov = x[[target, covariate]].cov().loc[target, covariate]
-        var = x[covariate].var()
+        cov = x[[target_col, covariate_col]].cov().loc[target_col, covariate_col]
+        var = x[covariate_col].var()
         theta = cov / var
 
-        for group in x[groups].unique():
-            x_subdf = x[x[groups] == group]
-            group_y_cuped = x_subdf[target] - theta * (x_subdf[covariate] - x_subdf[covariate].mean())
-            x.loc[x[groups] == group, target] = group_y_cuped
+        for group in x[groups_col].unique():
+            x_subdf = x[x[groups_col] == group]
+            group_y_cuped = x_subdf[target_col] - theta * (x_subdf[covariate_col] - x_subdf[covariate_col].mean())
+            x.loc[x[groups_col] == group, target_col] = group_y_cuped
 
         return x
