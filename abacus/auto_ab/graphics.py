@@ -119,6 +119,3 @@ class Graphics:
             ax.annotate('{:.1f}%'.format(shares[i]), (x, y), ha='center')
         plt.show()
         plt.close()
-
-if __name__ == '__main__':
-    Graphics.plot_binary_experiment()

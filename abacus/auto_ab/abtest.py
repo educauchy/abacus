@@ -12,9 +12,7 @@ from abacus.auto_ab.variance_reduction import VarianceReduction
 from abacus.auto_ab.params import ABTestParams
 from abacus.resplitter.resplit_builder import ResplitBuilder
 from abacus.resplitter.params import ResplitParams
-
-metric_name_typing = Union[str, Callable[[np.ndarray], Union[int, float]]]
-stat_test_typing = Dict[str, Optional[Union[int, float]]]
+from abacus import types
 
 
 class ABTest:
@@ -155,7 +153,7 @@ class ABTest:
         return x_new
 
     def _manual_ttest(self, ctrl_mean: float, ctrl_var: float, ctrl_size: int,
-                      treat_mean: float, treat_var: float, treat_size: int) -> stat_test_typing:
+                      treat_mean: float, treat_var: float, treat_size: int) -> types.StatTestType:
         """Performs Welch's t-test based on aggregation of metrics instead of datasets.
 
         For empirical calculation of T-statistic we need: expectation, variance, array size for each group.
@@ -266,9 +264,9 @@ class ABTest:
 
         transforms = self.params.data_params.transforms.tolist()
         if len(transforms) > 0:
-            transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.\n'
+            transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.'
         else:
-            transforms_str = 'No transformations applied.\n'
+            transforms_str = 'No transformations applied.'
 
         params = {
             'ztest_stat': ztest['stat'], 'ztest_pvalue': ztest['p-value'], 'ztest_result': ztest_res,
@@ -604,7 +602,7 @@ Following statistical tests are used:
 
         return ABTest(new_dataset, self.params)
 
-    def test_boot_fp(self) -> stat_test_typing:
+    def test_boot_fp(self) -> types.StatTestType:
         """ Performs bootstrap hypothesis testing by calculation of false positives.
 
         Returns:
@@ -645,7 +643,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_boot_confint(self) -> stat_test_typing:
+    def test_boot_confint(self) -> types.StatTestType:
         """ Performs bootstrap confidence interval and zero
         statistical significance.
 
@@ -696,7 +694,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_boot_ratio(self) -> stat_test_typing:
+    def test_boot_ratio(self) -> types.StatTestType:
         """Performs bootstrap for ratio-metric.
 
         Returns:
@@ -748,7 +746,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_boot_welch(self) -> stat_test_typing:
+    def test_boot_welch(self) -> types.StatTestType:
         r""" Performs Welch's t-test for independent samples with unequal number of observations and variance.
 
         Welch's t-test is used as a wider approaches with less restrictions on samples size as in Student's t-test.
@@ -789,7 +787,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_buckets(self) -> stat_test_typing:
+    def test_buckets(self) -> types.StatTestType:
         """ Performs buckets hypothesis testing.
 
         Returns:
@@ -827,7 +825,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_chisquare(self) -> stat_test_typing:
+    def test_chisquare(self) -> types.StatTestType:
         """Performs Chi-Square test.
 
         Returns:
@@ -851,7 +849,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_delta_ratio(self) -> stat_test_typing:
+    def test_delta_ratio(self) -> types.StatTestType:
         """ Delta method with bias correction for ratios.
 
         Source: https://arxiv.org/pdf/1803.06336.pdf.
@@ -867,7 +865,7 @@ Following statistical tests are used:
 
         return self._manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
 
-    def test_mannwhitney(self) -> stat_test_typing:
+    def test_mannwhitney(self) -> types.StatTestType:
         r"""Performs Mann-Whitney U test.
 
         Test works on continues metrics and their ranks.
@@ -905,7 +903,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_strat_confint(self) -> stat_test_typing:
+    def test_strat_confint(self) -> types.StatTestType:
         """ Performs stratification with confidence interval.
 
         Returns:
@@ -951,7 +949,7 @@ Following statistical tests are used:
 
         return ttest_result
 
-    def test_strat_confint_old(self) -> stat_test_typing:
+    def test_strat_confint_new(self) -> types.StatTestType:
         """ Performs stratification with confidence interval.
 
         Returns:
@@ -1012,7 +1010,81 @@ Following statistical tests are used:
         }
         return result
 
-    def test_taylor_ratio(self) -> stat_test_typing:
+    def test_strat_confint_old(self) -> types.StatTestType:
+        """ Performs stratification with confidence interval.
+
+        Returns:
+            stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
+        """
+        metric_diffs: List[float] = []
+        vars_diffs = []
+        avg_boot_metric_diffs = []
+        x = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
+        y = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
+
+        x_target = x[self.params.data_params.target]
+        y_target = y[self.params.data_params.target]
+
+        for _ in range(self.params.hypothesis_params.n_boot_samples):
+            x_boot = np.random.choice(x_target, len(x_target), replace=True)
+            y_boot = np.random.choice(y_target, len(y_target), replace=True)
+            avg_boot_metric_diffs.append(self.params.hypothesis_params.metric(y_boot) - self.params.hypothesis_params.metric(x_boot))
+
+            x_strata_metric = 0
+            y_strata_metric = 0
+            x_strata_list = []
+            y_strata_list = []
+            for strat in self.params.hypothesis_params.strata_weights.keys():
+                x_strata = x.loc[x[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
+                y_strata = y.loc[y[self.params.hypothesis_params.strata] == strat, self.params.data_params.target]
+                x_strata_metric += (self.params.hypothesis_params.metric(
+                                        np.random.choice(x_strata, size=x_strata.shape[0], replace=True)) *
+                                    self.params.hypothesis_params.strata_weights[strat])
+                y_strata_metric += (self.params.hypothesis_params.metric(
+                                        np.random.choice(y_strata, size=y_strata.shape[0], replace=True)) *
+                                    self.params.hypothesis_params.strata_weights[strat])
+
+            x_strata_list.append(x_strata_metric)
+            y_strata_list.append(y_strata_metric)
+
+            iter_diff = self.params.hypothesis_params.metric(y_strata_metric) - self.params.hypothesis_params.metric(x_strata_metric)
+            metric_diffs.append(iter_diff)
+
+        pd_metric_diffs = pd.DataFrame(metric_diffs)
+        pd_boot_metric_diffs = pd.DataFrame(avg_boot_metric_diffs)
+
+        print(np.mean(x_target))
+        print(np.mean(x_strata_list))
+        print(np.mean(y_target))
+        print(np.mean(y_strata_list))
+
+        print('SRS')
+        print(np.round(np.mean(metric_diffs), 4))
+        print(np.round(np.var(metric_diffs), 4))
+        print('PS')
+        print(np.round(np.mean(avg_boot_metric_diffs), 4))
+        print(np.round(np.var(avg_boot_metric_diffs), 4))
+        print('Relation')
+        print(np.round(np.mean(metric_diffs) / np.mean(avg_boot_metric_diffs), 4))
+        print(np.round(np.var(metric_diffs) / np.var(avg_boot_metric_diffs), 4))
+
+        left_quant = self.params.hypothesis_params.alpha / 2
+        right_quant = 1 - self.params.hypothesis_params.alpha / 2
+        ci = pd_metric_diffs.quantile([left_quant, right_quant])
+        ci_left, ci_right = float(ci.iloc[0]), float(ci.iloc[1])
+
+        test_result: int = 0  # 0 - cannot reject H0, 1 - reject H0
+        if ci_left > 0 or ci_right < 0:  # left border of ci > 0 or right border of ci < 0
+            test_result = 1
+
+        result = {
+            'stat': None,
+            'p-value': None,
+            'result': test_result
+        }
+        return result
+
+    def test_taylor_ratio(self) -> types.StatTestType:
         """ Calculate expectation and variance of ratio for each group and then use t-test for hypothesis testing.
 
         Source: http://www.stat.cmu.edu/~hseltman/files/ratio.pdf.
@@ -1028,7 +1100,7 @@ Following statistical tests are used:
 
         return self._manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
 
-    def test_welch(self) -> stat_test_typing:
+    def test_welch(self) -> types.StatTestType:
         """Performs Welch's t-test.
 
         Returns:
@@ -1059,7 +1131,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_z_proportions(self) -> stat_test_typing:
+    def test_z_proportions(self) -> types.StatTestType:
         r"""Performs z-test for proportions.
 
         The two-proportions z-test is used to compare two observed proportions.

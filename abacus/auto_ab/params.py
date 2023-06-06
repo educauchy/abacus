@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Dict, Any, Callable, Optional, Iterable
+from typing import List, Dict, Any, Callable, Optional, Iterable, Union
 from pydantic.dataclasses import dataclass
 from pydantic import validator, Field
 import numpy as np
@@ -109,7 +109,7 @@ class HypothesisParams:
     @validator("metric", always=True)
     @classmethod
     def metric_validator(cls,
-                         metric: Callable[[Iterable[float]], float]) -> str:
+                         metric: Union[Callable[[Any], Union[int,float]], str]) -> str:
         if type(metric) == str:
             assert metric in ['mean', 'median']
             return metric

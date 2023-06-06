@@ -17,14 +17,14 @@ class SplitBuilderParams:
     n_bins: int = 3
     min_cluster_size: int = 100  # the number of top categories (by frequency) that will not be combined in 'other' categories
     strata_outliers_frac: float = 0.01
-    pvalue: float = 0.05
+    alpha: float = 0.05
 
     def __post_init_post_parse__(self):
         self.cols.extend([self.split_metric_col])
         self.cols = list(set(self.cols))
 
-    @validator("pvalue")
+    @validator("alpha")
     @classmethod
-    def pvalue_validator(cls, pvalue: float):
-        assert 0 < pvalue < 1
-        return pvalue
+    def alpha_validator(cls, alpha: float):
+        assert 0 < alpha < 1
+        return alpha

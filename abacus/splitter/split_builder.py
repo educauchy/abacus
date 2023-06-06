@@ -161,7 +161,7 @@ class SplitBuilder:
         check_flag = 1
 
         for group in target_groups_names:
-            hypothesis_params = HypothesisParams(alpha=self.params.pvalue)
+            hypothesis_params = HypothesisParams(alpha=self.params.alpha)
             for column in self.params.cols + self.params.cat_cols :
                 data_params = DataParams(group_col="group_name",
                                     id_col=self.params.id_col,
