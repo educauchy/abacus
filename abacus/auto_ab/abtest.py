@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, Union, Optional, Callable, Tuple, List
+from typing import Optional, Tuple
 import copy
 import warnings
 import numpy as np
@@ -12,7 +12,7 @@ from abacus.auto_ab.variance_reduction import VarianceReduction
 from abacus.auto_ab.params import ABTestParams
 from abacus.resplitter.resplit_builder import ResplitBuilder
 from abacus.resplitter.params import ResplitParams
-from abacus import types
+from abacus.types import ArrayNumType, ColumnNamesType, DataFrameType, StatTestResultType
 
 
 class ABTest:
@@ -39,7 +39,7 @@ class ABTest:
     """
 
     def __init__(self,
-                 dataset: pd.DataFrame,
+                 dataset: DataFrameType,
                  params: ABTestParams
                  ) -> None:
         self.params = params
@@ -53,7 +53,7 @@ class ABTest:
             self.params.data_params.treatment = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
     @property
-    def dataset(self) -> pd.DataFrame:
+    def dataset(self) -> DataFrameType:
         return self.__dataset
 
     def __str__(self) -> str:
@@ -66,7 +66,7 @@ class ABTest:
                    metric_type=self.params.hypothesis_params.metric_type,
                    metric_name=self.params.hypothesis_params.metric_name)
 
-    def __check_required_columns(self, df: pd.DataFrame, method: str) -> None:
+    def __check_required_columns(self, df: DataFrameType, method: str) -> None:
         """Check presence of columns in dataframe.
 
         Args:
@@ -77,7 +77,7 @@ class ABTest:
             ValueError: If `is_valid_col` is False. Experiment cannot be provided
             if required columns are absent.
         """
-        cols: List[str] = []
+        cols: ColumnNamesType = []
         if method == 'init':
             cols = [self.params.data_params.id_col, self.params.data_params.group_col]
             if self.params.hypothesis_params.metric_type == 'continuous':
@@ -107,12 +107,12 @@ class ABTest:
         if not is_valid_col:
             raise ValueError(f'The following columns are not in dataframe: {*invalid_cols,}')
 
-    def __get_group(self, group_label: str, df: Optional[pd.DataFrame] = None) -> np.ndarray:
+    def __get_group(self, group_label: str, df: Optional[DataFrameType] = None) -> np.ndarray:
         """Gets target metric column based on desired group label.
 
         Args:
             group_label (str): Group label, e.g. 'A', 'B'.
-            df (pd.DataFrame, optional): DataFrame to query from.
+            df (DataFrameType, optional): DataFrame to query from.
 
         Returns:
             numpy.ndarray: Target column for a desired group.
@@ -127,7 +127,7 @@ class ABTest:
             self.params.data_params.target_flg].to_numpy()
         return group
 
-    def __bucketize(self, x: np.ndarray) -> np.ndarray:
+    def __bucketize(self, x: ArrayNumType) -> np.ndarray:
         """Split array ``x`` into N non-overlapping buckets.
 
         There are two purposes for this actions:
@@ -153,7 +153,7 @@ class ABTest:
         return x_new
 
     def _manual_ttest(self, ctrl_mean: float, ctrl_var: float, ctrl_size: int,
-                      treat_mean: float, treat_var: float, treat_size: int) -> types.StatTestType:
+                      treat_mean: float, treat_var: float, treat_size: int) -> StatTestResultType:
         """Performs Welch's t-test based on aggregation of metrics instead of datasets.
 
         For empirical calculation of T-statistic we need: expectation, variance, array size for each group.
@@ -197,7 +197,7 @@ class ABTest:
         }
         return result
 
-    def _delta_params(self, x: pd.DataFrame) -> Tuple[float, float]:
+    def _delta_params(self, x: DataFrameType) -> Tuple[float, float]:
         """Calculated expectation and variance for ratio metric using delta approximation.
 
         Source: https://arxiv.org/pdf/1803.06336.pdf.
@@ -221,7 +221,7 @@ class ABTest:
 
         return mean, var
 
-    def _taylor_params(self, x: pd.DataFrame) -> Tuple[float, float]:
+    def _taylor_params(self, x: DataFrameType) -> Tuple[float, float]:
         """ Calculated expectation and variance for ratio metric using Taylor expansion approximation.
 
         Source: https://www.stat.cmu.edu/~hseltman/files/ratio.pdf.
@@ -262,7 +262,7 @@ class ABTest:
         elif test_result == 0:
             test_explanation = 'All three stat. tests showed that H0 is not rejected.'
 
-        transforms = self.params.data_params.transforms.tolist()
+        transforms: ArrayNumType = self.params.data_params.transforms.tolist()
         if len(transforms) > 0:
             transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.'
         else:
@@ -340,7 +340,7 @@ Following statistical tests are used:
         if 'filter outliers' in self.params.data_params.transforms:
             filter_outliers_str = f'Outliers filtering method applied: {hypothesis.filter_method}.\n'
 
-        transforms = self.params.data_params.transforms.tolist()
+        transforms: ArrayNumType = self.params.data_params.transforms.tolist()
         if len(transforms) > 0:
             transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.\n'
         else:
@@ -427,9 +427,9 @@ Following statistical tests are used:
         """
         self.__check_required_columns(self.__dataset, 'cuped')
         result_df = VarianceReduction.cuped(self.__dataset,
-                                            target=self.params.data_params.target,
-                                            groups=self.params.data_params.group_col,
-                                            covariate=self.params.data_params.covariate)
+                                            target_col=self.params.data_params.target,
+                                            groups_col=self.params.data_params.group_col,
+                                            covariate_col=self.params.data_params.covariate)
 
         params_new = copy.deepcopy(self.params)
         params_new.data_params.control = self.__get_group(self.params.data_params.control_name, result_df)
@@ -602,7 +602,7 @@ Following statistical tests are used:
 
         return ABTest(new_dataset, self.params)
 
-    def test_boot_fp(self) -> types.StatTestType:
+    def test_boot_fp(self) -> StatTestResultType:
         """ Performs bootstrap hypothesis testing by calculation of false positives.
 
         Returns:
@@ -611,7 +611,7 @@ Following statistical tests are used:
         x = self.params.data_params.control
         y = self.params.data_params.treatment
 
-        metric_diffs: List[float] = []
+        metric_diffs: ArrayNumType = []
         for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_boot = np.random.choice(x, size=x.shape[0], replace=True)
             y_boot = np.random.choice(y, size=y.shape[0], replace=True)
@@ -643,7 +643,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_boot_confint(self) -> types.StatTestType:
+    def test_boot_confint(self) -> StatTestResultType:
         """ Performs bootstrap confidence interval and zero
         statistical significance.
 
@@ -653,7 +653,7 @@ Following statistical tests are used:
         x = self.params.data_params.control
         y = self.params.data_params.treatment
 
-        metric_diffs: List[float] = []
+        metric_diffs: ArrayNumType = []
         for _ in range(self.params.hypothesis_params.n_boot_samples):
             x_boot = np.random.choice(x, size=x.shape[0], replace=True)
             y_boot = np.random.choice(y, size=y.shape[0], replace=True)
@@ -694,7 +694,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_boot_ratio(self) -> types.StatTestType:
+    def test_boot_ratio(self) -> StatTestResultType:
         """Performs bootstrap for ratio-metric.
 
         Returns:
@@ -746,7 +746,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_boot_welch(self) -> types.StatTestType:
+    def test_boot_welch(self) -> StatTestResultType:
         r""" Performs Welch's t-test for independent samples with unequal number of observations and variance.
 
         Welch's t-test is used as a wider approaches with less restrictions on samples size as in Student's t-test.
@@ -787,7 +787,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_buckets(self) -> types.StatTestType:
+    def test_buckets(self) -> StatTestResultType:
         """ Performs buckets hypothesis testing.
 
         Returns:
@@ -825,7 +825,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_chisquare(self) -> types.StatTestType:
+    def test_chisquare(self) -> StatTestResultType:
         """Performs Chi-Square test.
 
         Returns:
@@ -849,7 +849,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_delta_ratio(self) -> types.StatTestType:
+    def test_delta_ratio(self) -> StatTestResultType:
         """ Delta method with bias correction for ratios.
 
         Source: https://arxiv.org/pdf/1803.06336.pdf.
@@ -865,7 +865,7 @@ Following statistical tests are used:
 
         return self._manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
 
-    def test_mannwhitney(self) -> types.StatTestType:
+    def test_mannwhitney(self) -> StatTestResultType:
         r"""Performs Mann-Whitney U test.
 
         Test works on continues metrics and their ranks.
@@ -903,7 +903,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_taylor_ratio(self) -> types.StatTestType:
+    def test_taylor_ratio(self) -> StatTestResultType:
         """ Calculate expectation and variance of ratio for each group and then use t-test for hypothesis testing.
 
         Source: http://www.stat.cmu.edu/~hseltman/files/ratio.pdf.
@@ -919,7 +919,7 @@ Following statistical tests are used:
 
         return self._manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
 
-    def test_welch(self) -> types.StatTestType:
+    def test_welch(self) -> StatTestResultType:
         """Performs Welch's t-test.
 
         Returns:
@@ -950,7 +950,7 @@ Following statistical tests are used:
         }
         return result
 
-    def test_z_proportions(self) -> types.StatTestType:
+    def test_z_proportions(self) -> StatTestResultType:
         r"""Performs z-test for proportions.
 
         The two-proportions z-test is used to compare two observed proportions.

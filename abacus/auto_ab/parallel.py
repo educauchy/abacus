@@ -3,11 +3,12 @@ import numpy as np
 import pandas as pd
 import hashlib
 import secrets
+from abacus.types import DataFrameType
 
 
 class ParallelExperiments:
     def __init__(self,
-                 dataset: pd.DataFrame,
+                 dataset: DataFrameType,
                  id_col: str = 'id',
                  method: str = 'hashing',
                  n_buckets: int = 200

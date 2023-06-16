@@ -2,6 +2,7 @@ from typing import List
 import pandas as pd
 import statsmodels.api as sm
 from category_encoders.target_encoder import TargetEncoder
+from abacus.types import ArrayNumType, ColumnNameType, ColumnNamesType, DataFrameType
 
 
 class VarianceReduction:
@@ -29,10 +30,10 @@ class VarianceReduction:
         pass
 
     @staticmethod
-    def _target_encoding(x: pd.DataFrame,
-                         encoding_columns: List[str],
+    def _target_encoding(x: DataFrameType,
+                         encoding_columns: ColumnNamesType,
                          target_column: str
-                         ) -> pd.DataFrame:
+                         ) -> DataFrameType:
         """Encodes target column.
         """
         for col in x[encoding_columns].select_dtypes(include='O').columns:
@@ -41,11 +42,11 @@ class VarianceReduction:
         return x
 
     @staticmethod
-    def _predict_target(x: pd.DataFrame,
-                        target_prev_col: str,
-                        factors_prev_cols: List[str],
-                        factors_now_cols: List[str]
-                        ) -> pd.Series:
+    def _predict_target(x: DataFrameType,
+                        target_prev_col: ColumnNameType,
+                        factors_prev_cols: ColumnNamesType,
+                        factors_now_cols: ColumnNamesType
+                        ) -> ArrayNumType:
         """Covariate prediction with linear regression model.
 
         Args:
@@ -69,13 +70,13 @@ class VarianceReduction:
 
     @classmethod
     def cupac(cls,
-              x: pd.DataFrame,
-              target_prev_col: str,
-              target_now_col: str,
-              factors_prev_cols: List[str],
-              factors_now_cols: List[str],
-              groups_col: str
-              ) -> pd.DataFrame:
+              x: DataFrameType,
+              target_prev_col: ColumnNameType,
+              target_now_col: ColumnNameType,
+              factors_prev_cols: ColumnNamesType,
+              factors_now_cols: ColumnNamesType,
+              groups_col: ColumnNameType
+              ) -> DataFrameType:
         """ Perform CUPED on target variable with covariate calculated
         as a prediction from a linear regression model.
 
@@ -99,11 +100,11 @@ class VarianceReduction:
 
     @classmethod
     def cuped(cls,
-              df: pd.DataFrame,
-              target_col: str,
-              groups_col: str,
-              covariate_col: str
-              ) -> pd.DataFrame:
+              df: DataFrameType,
+              target_col: ColumnNameType,
+              groups_col: ColumnNameType,
+              covariate_col: ColumnNameType
+              ) -> DataFrameType:
         """ Perform CUPED on target variable with predefined covariate.
 
         Covariate has to be chosen with regard to the following restrictions:

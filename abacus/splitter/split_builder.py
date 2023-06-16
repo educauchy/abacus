@@ -71,14 +71,15 @@ class SplitBuilder:
         stratas_freq = stratas_freq[stratas_freq >= self.params.strata_outliers_frac].index
 
         clean_df = df[df[self.params.main_strata_col].isin(stratas_freq)]
-
+        
         main_strata = (clean_df[self.params.main_strata_col].astype(str) +
                     clean_df.groupby(self.params.main_strata_col)[self.params.split_metric_col]
                         .apply(lambda x: pd.qcut(x, 
                                                 self.params.n_bins, 
                                                 labels=range(self.params.n_bins))
-                                                ).astype(str)
+                                                ).astype(str)#.reset_index()
                     )
+        
         clean_df = clean_df.assign(strata=main_strata)
         if len(self.params.cols)>0:
             additional_strata = (clean_df.groupby("strata", as_index=False)

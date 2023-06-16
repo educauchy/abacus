@@ -52,7 +52,8 @@ class MdeParams:
     @validator("variance_reduction", always=True)
     @classmethod
     def variance_reduction_validator(cls, variance_reduction):
-        assert variance_reduction in [ABTest.cuped, ABTest.cupac, None]
+        assert variance_reduction in [ABTest.cuped, ABTest.cupac, None], \
+                            'variance reduction algorithm is not in list of allowed ones'
         return variance_reduction
 
     @validator("stat_test", always=True)
@@ -62,13 +63,12 @@ class MdeParams:
                              ABTest.test_boot_fp,
                              ABTest.test_boot_welch,
                              ABTest.test_boot_ratio,
-                             ABTest.test_strat_confint,
                              ABTest.test_mannwhitney,
                              ABTest.test_welch,
                              ABTest.test_delta_ratio,
                              ABTest.test_taylor_ratio,
                              ABTest.test_z_proportions,
-                            ]
+                            ], 'stat test is not in list of allowed tests'
         return stat_test
 
     @root_validator

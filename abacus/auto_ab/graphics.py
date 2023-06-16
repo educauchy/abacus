@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from abacus.auto_ab.params import ABTestParams
+from abacus.types import ArrayNumType
 
 
 class Graphics:
@@ -62,7 +63,7 @@ class Graphics:
 
     @classmethod
     def plot_bootstrap_confint(cls,
-                               x: np.ndarray,
+                               x: ArrayNumType,
                                params: ABTestParams) -> None:
         """Plot bootstrapped metric of an experiment with its confidence
         interval and zero value.

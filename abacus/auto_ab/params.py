@@ -1,8 +1,12 @@
 from __future__ import annotations
 from typing import List, Dict, Any, Callable, Optional, Iterable, Union
+
 from pydantic.dataclasses import dataclass
 from pydantic import validator, Field
 import numpy as np
+
+from abacus.types import MetricFunctionType, ColumnNameType, ColumnNamesType, \
+                        ArrayNumType, ArrayStrType, MetricType, MetricTransformType
 
 class ValidationConfig:
     validate_assignment = True
@@ -27,27 +31,27 @@ class DataParams:
         target_prev (str, Optional): Target column name for previous period of continuous metric.
         predictors_now (List[str], Optional): List of columns to predict covariate.
         predictors_prev (List[str], Optional): List of columns to create linear model for covariate prediction.
-        control (np.ndarray, Optional): Control group data used for quick access and excluding querying dataset.
-        treatment (np.ndarray, Optional): Treatment group data used for quick access and excluding querying dataset.
-        transforms (np.ndarray, Optional): List of transformations applied to experiment.
+        control (ArrayNumType, Optional): Control group data used for quick access and excluding querying dataset.
+        treatment (ArrayNumType, Optional): Treatment group data used for quick access and excluding querying dataset.
+        transforms (ArrayStrType, Optional): List of transformations applied to experiment.
     """
-    id_col: str = 'id'
-    group_col: str = 'groups'
+    id_col: ColumnNameType = 'id'
+    group_col: ColumnNameType = 'groups'
     control_name: str = 'A'
     treatment_name: str = 'B'
     is_grouped: Optional[bool] = True
-    strata_col: Optional[str] = ''
-    target: Optional[str] = ''
-    target_flg: Optional[str] = ''
-    numerator: Optional[str] = ''
-    denominator: Optional[str] = ''
-    covariate: Optional[str] = ''
-    target_prev: Optional[str] = ''
-    predictors_now: Optional[List[str]] = Field(default=['pred_now'])
-    predictors_prev: Optional[List[str]] = Field(default=['pred_prev'])
-    control: Optional[np.ndarray] = np.array([])
-    treatment: Optional[np.ndarray] = np.array([])
-    transforms: Optional[np.ndarray] = np.array([])
+    strata_col: Optional[ColumnNameType] = ''
+    target: Optional[ColumnNameType] = ''
+    target_flg: Optional[ColumnNameType] = ''
+    numerator: Optional[ColumnNameType] = ''
+    denominator: Optional[ColumnNameType] = ''
+    covariate: Optional[ColumnNameType] = ''
+    target_prev: Optional[ColumnNameType] = ''
+    predictors_now: Optional[ColumnNamesType] = Field(default_factory=list)
+    predictors_prev: Optional[ColumnNamesType] = Field(default_factory=list)
+    control: Optional[ArrayNumType] = Field(default_factory=list)
+    treatment: Optional[ArrayNumType] = Field(default_factory=list)
+    transforms: Optional[ArrayStrType] = Field(default_factory=list)
 
 @dataclass(config=ValidationConfig)
 class HypothesisParams:
@@ -68,19 +72,19 @@ class HypothesisParams:
         strata (str, Optional): stratification column.
         strata_weights (Dict[str, float], Optional): historical strata weights.
     """
-    alpha: float = 0.05
-    beta: float = 0.2
-    alternative: str = 'two-sided'  # less, greater, two-sided
-    metric_type: str = 'continuous'  # continuous, binary, ratio
-    metric_name: str = 'mean'  # mean, median
-    metric: Optional[Callable[[Iterable[float]], float]] = np.mean
-    metric_transform: Optional[Callable[[np.ndarray], np.ndarray]] = None
+    alpha: Optional[float] = 0.05
+    beta: Optional[float] = 0.2
+    alternative: Optional[str] = 'two-sided'  # less, greater, two-sided
+    metric_type: Optional[str] = 'continuous'  # continuous, binary, ratio
+    metric_name: Optional[str] = 'mean'  # mean, median
+    metric: Optional[MetricType] = np.mean
+    metric_transform: Optional[MetricTransformType] = None
     metric_transform_info: Optional[Dict[str, Dict[str, Any]]] = None
     filter_method: Optional[str] = 'top_5'  # top_5, isolation_forest
     n_boot_samples: Optional[int] = 200
-    n_buckets: Optional[int] = 50
+    n_buckets: Optional[int] = 100
     strata: Optional[str] = ''
-    strata_weights: Optional[Dict[str, float]] = Field(default={'1': 0.8, '2': 0.2})
+    strata_weights: Optional[Dict[str, float]] = Field(default_factory=dict)
 
     def __post_init__(self):
         if self.metric_name == 'mean':
@@ -91,32 +95,39 @@ class HypothesisParams:
     @validator("alpha", always=True)
     @classmethod
     def alpha_validator(cls, alpha: float) -> float:
-        assert 1 > alpha > 0
+        assert 1 > alpha > 0, 'alpha is not in range [0, 1]'
         return alpha
 
     @validator("beta", always=True)
     @classmethod
     def beta_validator(cls, beta: float) -> float:
-        assert 1 > beta > 0
+        assert 1 > beta > 0, 'beta is not in range [0, 1]'
         return beta
 
     @validator("alternative", always=True)
     @classmethod
     def alternative_validator(cls, alternative: str) -> str:
-        assert alternative in ['two-sided', 'less', 'greater']
+        assert alternative in ['two-sided', 'less', 'greater'], "alternative is not in ['two-sided', 'less', 'greater']"
         return alternative
 
-    @validator("metric", always=True)
+    @validator("metric_type", always=True)
     @classmethod
-    def metric_validator(cls,
-                         metric: Union[Callable[[Any], Union[int,float]], str]) -> str:
-        if type(metric) == str:
-            assert metric in ['mean', 'median']
-            return metric
-        else:
-            return metric
+    def alternative_validator(cls, metric_type: str) -> str:
+        assert metric_type in ['continuous', 'binary', 'ratio'], "metric_type is not in ['continuous', 'binary', 'ratio']"
+        return metric_type
+
+    # @validator("metric", always=True)
+    # @classmethod
+    # def metric_validator(cls,
+    #                      metric: MetricFunctionType
+    #                      ) -> MetricFunctionType:
+    #     if type(metric) == str:
+    #         assert metric in ['mean', 'median']
+    #         return metric
+    #     else:
+    #         return metric
 
 @dataclass
 class ABTestParams:
-    data_params: DataParams = DataParams()
-    hypothesis_params: HypothesisParams = HypothesisParams()
+    data_params: DataParams = Field(default=DataParams())
+    hypothesis_params: HypothesisParams = Field(default=HypothesisParams())
