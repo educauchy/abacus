@@ -1,0 +1,26 @@
+data_params:
+  id_col: 'id'
+  group_col: 'groups'
+  target: 'height_now'
+  target_flg: 'bought'
+  predictors: ['weight_now']
+  numerator: 'clicks'
+  denominator: 'sessions'
+  covariate: 'height_prev'
+  target_prev: 'height_prev'
+  predictors_prev: ['weight_prev']
+  is_grouped: True
+hypothesis_params:
+  alpha: 0.05
+  beta: 0.2
+  alternative: 'two-sided' # less, greater, two-sided
+  strategy: 'simple_test'
+  strata: 'country'
+  strata_weights:
+    'US': 0.8
+    'UK': 0.2
+  n_boot_samples: 200
+  n_buckets: 50
+  metric_type: 'solid'
+  metric_name: 'mean'
+  metric: 'mean'

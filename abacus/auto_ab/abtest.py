@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
 import copy
 import warnings
 import numpy as np
@@ -12,7 +12,7 @@ from abacus.auto_ab.variance_reduction import VarianceReduction
 from abacus.auto_ab.params import ABTestParams
 from abacus.resplitter.resplit_builder import ResplitBuilder
 from abacus.resplitter.params import ResplitParams
-from abacus.types import ArrayNumType, ColumnNamesType, DataFrameType, StatTestResultType
+from abacus.types import ArrayNumType, DataFrameType, StatTestResultType
 
 
 class ABTest:
@@ -39,7 +39,7 @@ class ABTest:
     """
 
     def __init__(self,
-                 dataset: DataFrameType,
+                 dataset: Optional[DataFrameType],
                  params: ABTestParams
                  ) -> None:
         self.params = params
@@ -66,6 +66,28 @@ class ABTest:
                    metric_type=self.params.hypothesis_params.metric_type,
                    metric_name=self.params.hypothesis_params.metric_name)
 
+    def __check_required_metric_type(self, method: str) -> None:
+        available_metric_methods = {
+            'continuous': ['report_continuous', 'cuped', 'cupac', 'bucketing', 'filter_outliers',
+                           'metric_transform', 'test_boot_fp', 'test_boot_welch', 'test_boot_confint',
+                           'test_welch', 'test_mannwhitney', 'test_buckets', 'manual_ttest'],
+            'binary': ['report_binary', 'test_boot_ratio', 'test_z_proportions', 'test_chisquare'],
+            'ratio': ['report_ratio', 'linearization', 'test_delta_ratio', 'test_taylor_ratio'],
+        }
+
+        incorrect_metric_type = ''
+        if method in available_metric_methods['continuous']:
+            incorrect_metric_type = 'continuous'
+        elif method in available_metric_methods['binary']:
+            incorrect_metric_type = 'binary'
+        elif method in available_metric_methods['ratio']:
+            incorrect_metric_type = 'ratio'
+
+        if method not in available_metric_methods[self.params.hypothesis_params.metric_type]:
+            raise ValueError("Incorrect metric type: '{incorrect_metric_type}' required, but '{current_metric_type}' provided". \
+                             format(incorrect_metric_type=incorrect_metric_type,
+                                    current_metric_type=self.params.hypothesis_params.metric_type))
+
     def __check_required_columns(self, df: DataFrameType, method: str) -> None:
         """Check presence of columns in dataframe.
 
@@ -77,35 +99,36 @@ class ABTest:
             ValueError: If `is_valid_col` is False. Experiment cannot be provided
             if required columns are absent.
         """
-        cols: ColumnNamesType = []
+        cols: Dict[str, str] = {}
         if method == 'init':
-            cols = [self.params.data_params.id_col, self.params.data_params.group_col]
+            cols = {
+                'id_col': self.params.data_params.id_col,
+                'group_col': self.params.data_params.group_col
+            }
             if self.params.hypothesis_params.metric_type == 'continuous':
-                cols.append(self.params.data_params.target)
+                cols = {'target': self.params.data_params.target}
             elif self.params.hypothesis_params.metric_type == 'binary':
-                cols.append(self.params.data_params.target_flg)
+                cols = {'target_flg': self.params.data_params.target_flg}
             elif self.params.hypothesis_params.metric_type == 'ratio':
-                cols.extend([self.params.data_params.numerator,
-                             self.params.data_params.denominator])
+                cols = {'numerator': self.params.data_params.numerator,
+                        'denominator': self.params.data_params.denominator}
         elif method == 'cuped':
-            cols = [self.params.data_params.covariate]
+            cols = {'covariate': self.params.data_params.covariate}
         elif method == 'cupac':
-            cols = []
-            cols.extend(self.params.data_params.predictors_prev)
-            cols.extend(self.params.data_params.predictors_now)
-            cols.append(self.params.data_params.target_prev)
+            cols = {'predictors_prev': self.params.data_params.predictors_prev,
+                    'predictors_now': self.params.data_params.predictors_now,
+                    'target_prev': self.params.data_params.target_prev}
         elif method == 'resplit_df':
-            cols = [self.params.data_params.strata_col]
+            cols = {'strata_col': self.params.data_params.strata_col}
 
-        is_valid_col: bool = True
-        invalid_cols = []
-        for col in cols:
-            if col not in df.columns:
-                is_valid_col = False
-                invalid_cols.append(col)
+        not_correct_fields = []
+        df_cols = df.columns
+        for field, value in cols.items():
+            if value == '' or value not in df_cols:
+                not_correct_fields.append(field)
 
-        if not is_valid_col:
-            raise ValueError(f'The following columns are not in dataframe: {*invalid_cols,}')
+        if len(not_correct_fields) > 0:
+            raise ValueError(f'You did not provide or provide incorrectly following data attributes: {not_correct_fields}')
 
     def __get_group(self, group_label: str, df: Optional[DataFrameType] = None) -> np.ndarray:
         """Gets target metric column based on desired group label.
@@ -130,7 +153,7 @@ class ABTest:
     def __bucketize(self, x: ArrayNumType) -> np.ndarray:
         """Split array ``x`` into N non-overlapping buckets.
 
-        There are two purposes for this actions:
+        There are two purposes for these actions:
 
         1. Decrease number of data points of experiment.
         2. Get normal distribution of a metric of interest.
@@ -152,7 +175,7 @@ class ABTest:
                           for x_ in np.array_split(x, self.params.hypothesis_params.n_buckets)])
         return x_new
 
-    def _manual_ttest(self, ctrl_mean: float, ctrl_var: float, ctrl_size: int,
+    def __manual_ttest(self, ctrl_mean: float, ctrl_var: float, ctrl_size: int,
                       treat_mean: float, treat_var: float, treat_size: int) -> StatTestResultType:
         """Performs Welch's t-test based on aggregation of metrics instead of datasets.
 
@@ -169,11 +192,12 @@ class ABTest:
         Returns:
             stat_test_typing: Dictionary with following properties: test statistic, p-value, test result. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('manual_ttest')
+
         t_stat_empirical = (treat_mean - ctrl_mean) / (ctrl_var / ctrl_size + treat_var / treat_size) ** (1 / 2)
-        # df = ctrl_size + treat_size - 2
-        df = (ctrl_var / ctrl_size + treat_var / treat_size) ** 2 / \
-             (ctrl_var ** 2 / (ctrl_size ** 2 * (ctrl_size - 1)) + \
-              (treat_var ** 2 / (treat_size ** 2 * (treat_size - 1))))
+        df = ((ctrl_var / ctrl_size + treat_var / treat_size) ** 2 /
+             (ctrl_var ** 2 / (ctrl_size ** 2 * (ctrl_size - 1)) +
+              (treat_var ** 2 / (treat_size ** 2 * (treat_size - 1)))))
 
         test_result: int = 0
         if self.params.hypothesis_params.alternative == 'two-sided':
@@ -197,7 +221,7 @@ class ABTest:
         }
         return result
 
-    def _delta_params(self, x: DataFrameType) -> Tuple[float, float]:
+    def __delta_params(self, x: DataFrameType) -> Tuple[float, float]:
         """Calculated expectation and variance for ratio metric using delta approximation.
 
         Source: https://arxiv.org/pdf/1803.06336.pdf.
@@ -221,7 +245,7 @@ class ABTest:
 
         return mean, var
 
-    def _taylor_params(self, x: DataFrameType) -> Tuple[float, float]:
+    def __taylor_params(self, x: DataFrameType) -> Tuple[float, float]:
         """ Calculated expectation and variance for ratio metric using Taylor expansion approximation.
 
         Source: https://www.stat.cmu.edu/~hseltman/files/ratio.pdf.
@@ -245,6 +269,8 @@ class ABTest:
         return mean, var
 
     def __report_binary(self) -> str:
+        self.__check_required_metric_type('report_binary')
+
         hypothesis = self.params.hypothesis_params
         ctrl = self.params.data_params.control
         trtm = self.params.data_params.treatment
@@ -255,6 +281,7 @@ class ABTest:
         ztest_res = 'H0 is not rejected' if ztest['result'] == 0 else 'H0 is rejected'
 
         test_result = chisq['result'] + ztest['result']
+        test_explanation = ''
         if test_result == 2:
             test_explanation = 'All two stat. tests showed that H0 is rejected.'
         elif test_result == 1:
@@ -306,6 +333,8 @@ Following statistical tests are used:
         return output
 
     def __report_continuous(self) -> str:
+        self.__check_required_metric_type('report_continuous')
+
         hypothesis = self.params.hypothesis_params
         ctrl = self.params.data_params.control
         trtm = self.params.data_params.treatment
@@ -318,6 +347,7 @@ Following statistical tests are used:
         boot_res = 'H0 is not rejected' if boot['result'] == 0 else 'H0 is rejected'
 
         test_result = welch['result'] + mwu['result'] + boot['result']
+        test_explanation = ''
         if test_result == 3:
             test_explanation = 'All three stat. tests showed that H0 is rejected.'
         elif test_result == 2:
@@ -406,12 +436,17 @@ Following statistical tests are used:
 
         return output
 
+    def __report_ratio(self):
+        raise NotImplementedError('Reporting for ratio metric is still in progress..')
+
     def bucketing(self) -> ABTest:
         """Performs bucketing in order to accelerate results computation.
 
         Returns:
             ABTest: New instance of ``ABTest`` class with modified control and treatment.
         """
+        self.__check_required_metric_type('bucketing')
+
         params_new = copy.deepcopy(self.params)
         params_new.data_params.control = self.__bucketize(self.params.data_params.control)
         params_new.data_params.treatment = self.__bucketize(self.params.data_params.treatment)
@@ -425,6 +460,7 @@ Following statistical tests are used:
         Returns:
             ABTest: New instance of ``ABTest`` class with modified control and treatment.
         """
+        self.__check_required_metric_type('cuped')
         self.__check_required_columns(self.__dataset, 'cuped')
         result_df = VarianceReduction.cuped(self.__dataset,
                                             target_col=self.params.data_params.target,
@@ -444,13 +480,14 @@ Following statistical tests are used:
         Returns:
             ABTest: New instance of ``ABTest`` class with modified control and treatment.
         """
+        self.__check_required_metric_type('cupac')
         self.__check_required_columns(self.__dataset, 'cupac')
         result_df = VarianceReduction.cupac(self.__dataset,
-                                            target_prev=self.params.data_params.target_prev,
-                                            target_now=self.params.data_params.target,
-                                            factors_prev=self.params.data_params.predictors_prev,
-                                            factors_now=self.params.data_params.predictors_now,
-                                            groups=self.params.data_params.group_col)
+                                            target_prev_col=self.params.data_params.target_prev,
+                                            target_now_col=self.params.data_params.target,
+                                            factors_prev_cols=self.params.data_params.predictors_prev,
+                                            factors_now_cols=self.params.data_params.predictors_now,
+                                            groups_col=self.params.data_params.group_col)
 
         params_new = copy.deepcopy(self.params)
         params_new.data_params.control = self.__get_group(self.params.data_params.control_name, result_df)
@@ -460,7 +497,10 @@ Following statistical tests are used:
         return ABTest(result_df, params_new)
 
     def filter_outliers(self) -> ABTest:
+        self.__check_required_metric_type('filter_outliers')
+
         target = self.__dataset[[self.params.data_params.target]].values
+        dataset_new = self.__dataset.copy()
 
         if self.params.hypothesis_params.filter_method == 'isolation_forest':
             not_outlier_index = IsolationForest(random_state=0).fit_predict(target) == 1
@@ -486,6 +526,8 @@ Following statistical tests are used:
 
         Source: https://research.yandex.com/publications/148.
         """
+        self.__check_required_metric_type('linearization')
+
         if self.params.data_params.is_grouped:
             return ABTest(self.__dataset, self.params)
 
@@ -537,6 +579,8 @@ Following statistical tests are used:
         return ABTest(dataset_new, params_new)
 
     def metric_transform(self) -> ABTest:
+        self.__check_required_metric_type('metric_transform')
+
         if self.params.hypothesis_params.metric_transform is None:
             return ABTest(self.__dataset, self.params)
 
@@ -608,6 +652,8 @@ Following statistical tests are used:
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('test_boot_fp')
+
         x = self.params.data_params.control
         y = self.params.data_params.treatment
 
@@ -650,6 +696,8 @@ Following statistical tests are used:
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('test_boot_confint')
+
         x = self.params.data_params.control
         y = self.params.data_params.treatment
 
@@ -700,6 +748,8 @@ Following statistical tests are used:
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('test_boot_ratio')
+
         x = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
         y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
@@ -749,7 +799,7 @@ Following statistical tests are used:
     def test_boot_welch(self) -> StatTestResultType:
         r""" Performs Welch's t-test for independent samples with unequal number of observations and variance.
 
-        Welch's t-test is used as a wider approaches with less restrictions on samples size as in Student's t-test.
+        Welch's t-test is used as a wider approaches with fewer restrictions on samples size as in Student's t-test.
 
         Statistic of the test:
 
@@ -759,6 +809,8 @@ Following statistical tests are used:
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('test_boot_welch')
+
         x = self.params.data_params.control
         y = self.params.data_params.treatment
 
@@ -793,6 +845,8 @@ Following statistical tests are used:
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('test_buckets')
+
         x = self.params.data_params.control
         y = self.params.data_params.treatment
 
@@ -831,6 +885,8 @@ Following statistical tests are used:
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('test_chisquare')
+
         x = self.__get_group(self.params.data_params.control_name, self.dataset)
         y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
@@ -857,13 +913,15 @@ Following statistical tests are used:
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('test_delta_ratio')
+
         x = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
         y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
-        ctrl_mean, ctrl_var = self._delta_params(x)
-        treat_mean, treat_var = self._delta_params(y)
+        ctrl_mean, ctrl_var = self.__delta_params(x)
+        treat_mean, treat_var = self.__delta_params(y)
 
-        return self._manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
+        return self.__manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
 
     def test_mannwhitney(self) -> StatTestResultType:
         r"""Performs Mann-Whitney U test.
@@ -883,6 +941,8 @@ Following statistical tests are used:
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('test_mannwhitney')
+
         x = self.params.data_params.control
         y = self.params.data_params.treatment
 
@@ -911,13 +971,15 @@ Following statistical tests are used:
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('test_taylor_ratio')
+
         x = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
         y = self.__dataset[self.__dataset[self.params.data_params.group_col] == self.params.data_params.treatment_name]
 
-        ctrl_mean, ctrl_var = self._taylor_params(x)
-        treat_mean, treat_var = self._taylor_params(y)
+        ctrl_mean, ctrl_var = self.__taylor_params(x)
+        treat_mean, treat_var = self.__taylor_params(y)
 
-        return self._manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
+        return self.__manual_ttest(ctrl_mean, ctrl_var, x.shape[0], treat_mean, treat_var, y.shape[0])
 
     def test_welch(self) -> StatTestResultType:
         """Performs Welch's t-test.
@@ -925,11 +987,13 @@ Following statistical tests are used:
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('test_welch')
+
         x = self.params.data_params.control
         y = self.params.data_params.treatment
 
         normality_passed = (shapiro(x).pvalue >= self.params.hypothesis_params.alpha) \
-                           and (shapiro(y).pvalue >= self.params.hypothesis_params.alpha)
+            and (shapiro(y).pvalue >= self.params.hypothesis_params.alpha)
 
         if not normality_passed:
             warnings.warn('One or both distributions are not normally distributed')
@@ -963,6 +1027,8 @@ Following statistical tests are used:
         Returns:
             stat_test_typing: Dictionary with following properties: ``test statistic``, ``p-value``, ``test result``. Test result: 1 - significant different, 0 - insignificant difference.
         """
+        self.__check_required_metric_type('test_z_proportions')
+
         x = self.__get_group(self.params.data_params.control_name, self.dataset)
         y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 

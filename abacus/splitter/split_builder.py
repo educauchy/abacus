@@ -77,7 +77,7 @@ class SplitBuilder:
                         .apply(lambda x: pd.qcut(x, 
                                                 self.params.n_bins, 
                                                 labels=range(self.params.n_bins))
-                                                ).astype(str)#.reset_index()
+                                                ).astype(str)
                     )
         
         clean_df = clean_df.assign(strata=main_strata)
