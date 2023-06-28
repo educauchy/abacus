@@ -70,7 +70,7 @@ class ABTest:
         available_metric_methods = {
             'continuous': ['report_continuous', 'cuped', 'cupac', 'bucketing', 'filter_outliers',
                            'metric_transform', 'test_boot_fp', 'test_boot_welch', 'test_boot_confint',
-                           'test_welch', 'test_mannwhitney', 'test_buckets', 'manual_ttest'],
+                           'test_welch', 'test_mannwhitney', 'test_buckets', 'manual_ttest', 'linearization'],
             'binary': ['report_binary', 'test_boot_ratio', 'test_z_proportions', 'test_chisquare'],
             'ratio': ['report_ratio', 'linearization', 'test_delta_ratio', 'test_taylor_ratio'],
         }
@@ -106,12 +106,12 @@ class ABTest:
                 'group_col': self.params.data_params.group_col
             }
             if self.params.hypothesis_params.metric_type == 'continuous':
-                cols = {'target': self.params.data_params.target}
+                cols['target'] = self.params.data_params.target
             elif self.params.hypothesis_params.metric_type == 'binary':
-                cols = {'target_flg': self.params.data_params.target_flg}
+                cols['target_flg'] = self.params.data_params.target_flg
             elif self.params.hypothesis_params.metric_type == 'ratio':
-                cols = {'numerator': self.params.data_params.numerator,
-                        'denominator': self.params.data_params.denominator}
+                cols['numerator'] = self.params.data_params.numerator
+                cols['denominator'] = self.params.data_params.denominator
         elif method == 'cuped':
             cols = {'covariate': self.params.data_params.covariate}
         elif method == 'cupac':
@@ -275,21 +275,22 @@ class ABTest:
         ctrl = self.params.data_params.control
         trtm = self.params.data_params.treatment
 
-        chisq = self.test_chisquare()
-        chisq_res = 'H0 is not rejected' if chisq['result'] == 0 else 'H0 is rejected'
         ztest = self.test_z_proportions()
         ztest_res = 'H0 is not rejected' if ztest['result'] == 0 else 'H0 is rejected'
 
-        test_result = chisq['result'] + ztest['result']
-        test_explanation = ''
-        if test_result == 2:
-            test_explanation = 'All two stat. tests showed that H0 is rejected.'
-        elif test_result == 1:
-            test_explanation = 'One out of two stat. tests showed that H0 is not rejected.'
-        elif test_result == 0:
-            test_explanation = 'All three stat. tests showed that H0 is not rejected.'
+        try:  # chi-square works well
+            chisq = self.test_chisquare()
+            chisq_res = 'H0 is not rejected' if chisq['result'] == 0 else 'H0 is rejected'
+            chisq_result = f"- Chi-square - test: {chisq['stat']: .2f}, p - value = {chisq['p-value']: .4f}, {chisq_res}."
+            test_result = chisq['result'] + ztest['result']
+            num_of_tests = 2
+        except:
+            chisq_result = ''
+            test_result = ztest['result']
+            num_of_tests = 1
 
-        transforms: ArrayNumType = self.params.data_params.transforms.tolist()
+        test_explanation = f'{test_result} out of {num_of_tests} stat.test show that H0 is rejected.'
+        transforms: ArrayNumType = self.params.data_params.transforms
         if len(transforms) > 0:
             transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.'
         else:
@@ -297,7 +298,7 @@ class ABTest:
 
         params = {
             'ztest_stat': ztest['stat'], 'ztest_pvalue': ztest['p-value'], 'ztest_result': ztest_res,
-            'chisq_stat': chisq['stat'], 'chisq_pvalue': chisq['p-value'], 'chisq_result': chisq_res,
+            'chi_square': chisq_result,
             'ctrl_conv': sum(ctrl) / len(ctrl), 'trtm_conv': sum(trtm) / len(trtm),
             'ctrl_obs': len(ctrl), 'trtm_obs': len(trtm),
             'alpha': hypothesis.alpha, 'beta': hypothesis.beta, 'alternative': hypothesis.alternative,
@@ -325,7 +326,7 @@ Treatment group:
 
 Following statistical tests are used:
 - Z-test: {ztest_stat:.2f}, p-value = {ztest_pvalue:.4f}, {ztest_result}.
-- Chi-square test: {chisq_stat:.2f}, p-value = {chisq_pvalue:.4f}, {chisq_result}.
+{chi_square}
 
 {test_explanation}
         '''.format(**params)
@@ -370,7 +371,7 @@ Following statistical tests are used:
         if 'filter outliers' in self.params.data_params.transforms:
             filter_outliers_str = f'Outliers filtering method applied: {hypothesis.filter_method}.\n'
 
-        transforms: ArrayNumType = self.params.data_params.transforms.tolist()
+        transforms: ArrayNumType = self.params.data_params.transforms
         if len(transforms) > 0:
             transforms_str = 'Transformations applied: ' + ' -> '.join(transforms) + '.\n'
         else:
@@ -547,15 +548,15 @@ Following statistical tests are used:
             self.__dataset = df_grouped
 
         elif self.params.hypothesis_params.metric_type == 'continuous':
-            target_col_name = self.params.data_params.target
-
             df_grouped = self.__dataset.groupby(by=[self.params.data_params.id_col,
                                                     self.params.data_params.group_col],
-                                                as_index=False)[target_col_name].agg(['sum', 'count']) \
+                                                 as_index=False)[self.params.data_params.target] \
+                                        .agg(['sum', 'count']) \
                                         .rename(columns={'sum': num_col, 'count': den_col}) \
                                         .reset_index()
 
             self.__dataset = df_grouped
+
 
         ctrl = self.__dataset.loc[self.__dataset[self.params.data_params.group_col] == self.params.data_params.control_name]
         k = round(sum(ctrl[num_col]) / sum(ctrl[den_col]), 5)
@@ -567,6 +568,7 @@ Following statistical tests are used:
                                                         new_target_name]],
                                         how='left', on=self.params.data_params.id_col)
         dataset_new = dataset_new.drop_duplicates(subset=[self.params.data_params.id_col])
+
         params_new.data_params.target = new_target_name
         params_new.data_params.control = dataset_new.loc[
                                             dataset_new[self.params.data_params.group_col] == self.params.data_params.control_name,
@@ -575,6 +577,8 @@ Following statistical tests are used:
                                             dataset_new[self.params.data_params.group_col] == self.params.data_params.treatment_name,
                                             new_target_name].to_numpy()
         params_new.data_params.transforms = np.append(params_new.data_params.transforms, 'linearization')
+
+        params_new.hypothesis_params.metric_type = 'continuous'
 
         return ABTest(dataset_new, params_new)
 
@@ -890,20 +894,24 @@ Following statistical tests are used:
         x = self.__get_group(self.params.data_params.control_name, self.dataset)
         y = self.__get_group(self.params.data_params.treatment_name, self.dataset)
 
-        observed = np.array([sum(y), len(y) - sum(y)])
-        expected = np.array([sum(x), len(x) - sum(x)])
-        stat, pvalue = chisquare(observed, expected)
+        if len(x) == len(y):
+            observed = np.array([sum(y), len(y) - sum(y)])
+            expected = np.array([sum(x), len(x) - sum(x)])
+            stat, pvalue = chisquare(observed, expected)
 
-        test_result: int = 0
-        if pvalue <= self.params.hypothesis_params.alpha:
-            test_result = 1
+            test_result: int = 0
+            if pvalue <= self.params.hypothesis_params.alpha:
+                test_result = 1
 
-        result = {
-            'stat': stat,
-            'p-value': pvalue,
-            'result': test_result
-        }
-        return result
+            result = {
+                'stat': stat,
+                'p-value': pvalue,
+                'result': test_result
+            }
+            return result
+        else:
+            raise ValueError('Both groups have different lengths')
+
 
     def test_delta_ratio(self) -> StatTestResultType:
         """ Delta method with bias correction for ratios.

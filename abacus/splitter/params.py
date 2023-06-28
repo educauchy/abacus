@@ -11,6 +11,7 @@ class SplitBuilderParams:
     map_group_names_to_sizes: Dict[str, Optional[int]]
     main_strata_col: str
     split_metric_col: str
+    metric_type: str = 'continuous'  # continuous, binary, ratio
     id_col: str = "customer_id"
     cols: List[str] = Field(default_factory=list)  # all cols for stratification
     cat_cols: List[str] = Field(default_factory=list) # this cols'll be encoded as category features
@@ -28,3 +29,9 @@ class SplitBuilderParams:
     def alpha_validator(cls, alpha: float):
         assert 0 < alpha < 1
         return alpha
+
+    @validator("metric_type", always=True)
+    @classmethod
+    def alternative_validator(cls, metric_type: str) -> str:
+        assert metric_type in ['continuous', 'binary', 'ratio'], "metric_type is not in ['continuous', 'binary', 'ratio']"
+        return metric_type
