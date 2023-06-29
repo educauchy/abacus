@@ -14,6 +14,7 @@ from abacus.resplitter.resplit_builder import ResplitBuilder
 from abacus.resplitter.params import ResplitParams
 from abacus.types import ArrayNumType, DataFrameType, StatTestResultType
 
+warnings.simplefilter('always')
 
 class ABTest:
     """Performs different calculations of A/B-test.
@@ -65,6 +66,11 @@ class ABTest:
                    alternative=self.params.hypothesis_params.alternative,
                    metric_type=self.params.hypothesis_params.metric_type,
                    metric_name=self.params.hypothesis_params.metric_name)
+
+    def __check_applied_transformation(self, method) -> None:
+        if method in self.params.data_params.transforms:
+            warnings.warn(f'Method `{method}` has already been called before. '
+                          f'It will be applied again, but you should check whether it is needed twice.')
 
     def __check_required_metric_type(self, method: str) -> None:
         available_metric_methods = {
@@ -446,6 +452,7 @@ Following statistical tests are used:
         Returns:
             ABTest: New instance of ``ABTest`` class with modified control and treatment.
         """
+        self.__check_applied_transformation('bucketing')
         self.__check_required_metric_type('bucketing')
 
         params_new = copy.deepcopy(self.params)
@@ -461,8 +468,10 @@ Following statistical tests are used:
         Returns:
             ABTest: New instance of ``ABTest`` class with modified control and treatment.
         """
+        self.__check_applied_transformation('cuped')
         self.__check_required_metric_type('cuped')
         self.__check_required_columns(self.__dataset, 'cuped')
+
         result_df = VarianceReduction.cuped(self.__dataset,
                                             target_col=self.params.data_params.target,
                                             groups_col=self.params.data_params.group_col,
@@ -481,6 +490,7 @@ Following statistical tests are used:
         Returns:
             ABTest: New instance of ``ABTest`` class with modified control and treatment.
         """
+        self.__check_applied_transformation('cupac')
         self.__check_required_metric_type('cupac')
         self.__check_required_columns(self.__dataset, 'cupac')
         result_df = VarianceReduction.cupac(self.__dataset,
@@ -498,6 +508,7 @@ Following statistical tests are used:
         return ABTest(result_df, params_new)
 
     def filter_outliers(self) -> ABTest:
+        self.__check_applied_transformation('filter_outliers')
         self.__check_required_metric_type('filter_outliers')
 
         target = self.__dataset[[self.params.data_params.target]].values
@@ -527,6 +538,7 @@ Following statistical tests are used:
 
         Source: https://research.yandex.com/publications/148.
         """
+        self.__check_applied_transformation('linearization')
         self.__check_required_metric_type('linearization')
 
         if self.params.data_params.is_grouped:
@@ -583,6 +595,7 @@ Following statistical tests are used:
         return ABTest(dataset_new, params_new)
 
     def metric_transform(self) -> ABTest:
+        self.__check_applied_transformation('metric_transform')
         self.__check_required_metric_type('metric_transform')
 
         if self.params.hypothesis_params.metric_transform is None:
@@ -954,10 +967,6 @@ Following statistical tests are used:
         x = self.params.data_params.control
         y = self.params.data_params.treatment
 
-        if self.params.hypothesis_params.metric_name != 'median':
-            warnings.warn('Metric of the test is {}, \
-                        but you use mann-whitney test with it'.format(self.params.hypothesis_params.metric_name))
-
         test_result: int = 0
         stat, pvalue = mannwhitneyu(x, y, alternative=self.params.hypothesis_params.alternative)
 
@@ -999,15 +1008,6 @@ Following statistical tests are used:
 
         x = self.params.data_params.control
         y = self.params.data_params.treatment
-
-        normality_passed = (shapiro(x).pvalue >= self.params.hypothesis_params.alpha) \
-            and (shapiro(y).pvalue >= self.params.hypothesis_params.alpha)
-
-        if not normality_passed:
-            warnings.warn('One or both distributions are not normally distributed')
-        if self.params.hypothesis_params.metric_name != 'mean':
-            warnings.warn('Metric of the test is {}, \
-                        but you use t-test with it'.format(self.params.hypothesis_params.metric_name))
 
         test_result: int = 0
         stat, pvalue = ttest_ind(y, x, equal_var=False, alternative=self.params.hypothesis_params.alternative)
