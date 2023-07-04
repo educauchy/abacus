@@ -35,7 +35,7 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
                                    guests_with_splits: pd.DataFrame,
                                    grid_element: Union[MdeBetaExperiment, MdeAlphaExperiment]
     ) -> pd.DataFrame:
-        """Calculates stat test for one experiment grid element.
+        """Calculates stat test for one element of experiment grid.
 
         Args:
             guests_with_splits (pandas.DataFrame): DataFrame with calculated splits for experiment.
