@@ -12,7 +12,7 @@ class ValidationConfig:
 
 @dataclass(config=ValidationConfig)
 class MdeParams:
-    """Prepilot experiment parameters class.
+    """MDE research experiment parameters class.
 
     Args:
         metrics_names: Metrics which will be compare in experiments.

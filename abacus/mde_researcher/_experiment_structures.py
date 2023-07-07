@@ -3,7 +3,12 @@ from pydantic.dataclasses import dataclass, Field
 
 @dataclass
 class BaseSplitElement():
-    """General dataclass of experiment.
+    """Dataclass with data params for experiment calculations
+
+    Args:
+        group_sizes (tuple): tuple with group sizes. Should have control group size on the 0 index position 
+            and target group size on the 1 index position
+        split_number (int): params with number of split
     """
     group_sizes: tuple
     split_number: int

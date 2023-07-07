@@ -214,6 +214,11 @@ class SplitBuilder:
     
 
     def collect(self) -> pd.DataFrame:
+        """Calculated splits for init dataframe
+.
+        Returns:
+            pandas.DataFrame: DataFrame with split.
+        """
         if len(self.split_data) == 0:
             return self.split_data
 
