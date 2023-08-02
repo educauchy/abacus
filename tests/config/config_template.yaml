@@ -14,7 +14,6 @@ hypothesis_params:
   alpha: 0.05
   beta: 0.2
   alternative: 'two-sided' # less, greater, two-sided
-  strategy: 'simple_test'
   strata: 'country'
   strata_weights:
     'US': 0.8
