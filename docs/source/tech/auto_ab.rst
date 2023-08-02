@@ -76,15 +76,11 @@ Graphics
 
 .. autoclass:: abacus.auto_ab.Graphics
 
-<<<<<<< HEAD:docs/source/tech/auto_ab.rst
 .. autofunction:: abacus.auto_ab.Graphics.plot_continuous_experiment
 .. autofunction:: abacus.auto_ab.Graphics.plot_binary_experiment
-=======
 .. autofunction:: abacus.auto_ab.Graphics.plot_simulation_matrix
 .. autofunction:: abacus.auto_ab.Graphics.plot_continuout_experiment
->>>>>>> main:docs/source/auto_ab.rst
 .. autofunction:: abacus.auto_ab.Graphics.plot_bootstrap_confint
-.. autofunction:: abacus.auto_ab.Graphics.plot_binary_experiment
 
 |
 

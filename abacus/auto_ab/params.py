@@ -92,40 +92,29 @@ class HypothesisParams:
         if self.metric_name == 'median':
             self.metric = np.median
 
-    @validator("alpha", always=True)
+    @validator("alpha", always=True, allow_reuse=True)
     @classmethod
     def alpha_validator(cls, alpha: float) -> float:
         assert 1 > alpha > 0, 'alpha is not in range [0, 1]'
         return alpha
 
-    @validator("beta", always=True)
+    @validator("beta", always=True, allow_reuse=True)
     @classmethod
     def beta_validator(cls, beta: float) -> float:
         assert 1 > beta > 0, 'beta is not in range [0, 1]'
         return beta
 
-    @validator("alternative", always=True)
+    @validator("alternative", always=True, allow_reuse=True)
     @classmethod
     def alternative_validator(cls, alternative: str) -> str:
         assert alternative in ['two-sided', 'less', 'greater'], "alternative is not in ['two-sided', 'less', 'greater']"
         return alternative
 
-    @validator("metric_type", always=True)
+    @validator("metric_type", always=True, allow_reuse=True)
     @classmethod
-    def alternative_validator(cls, metric_type: str) -> str:
+    def metric_type(cls, metric_type: str) -> str:
         assert metric_type in ['continuous', 'binary', 'ratio'], "metric_type is not in ['continuous', 'binary', 'ratio']"
         return metric_type
-
-    # @validator("metric", always=True)
-    # @classmethod
-    # def metric_validator(cls,
-    #                      metric: MetricFunctionType
-    #                      ) -> MetricFunctionType:
-    #     if type(metric) == str:
-    #         assert metric in ['mean', 'median']
-    #         return metric
-    #     else:
-    #         return metric
 
 @dataclass
 class ABTestParams:

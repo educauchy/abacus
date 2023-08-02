@@ -58,7 +58,7 @@ class MdeParams:
 
     @validator("stat_test", always=True)
     @classmethod
-    def alternative_validator(cls, stat_test):
+    def stat_test_validator(cls, stat_test):
         assert stat_test in [ABTest.test_boot_confint,
                              ABTest.test_boot_fp,
                              ABTest.test_boot_welch,
