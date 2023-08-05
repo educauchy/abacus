@@ -112,7 +112,7 @@ class HypothesisParams:
 
     @validator("metric_type", always=True, allow_reuse=True)
     @classmethod
-    def metric_type(cls, metric_type: str) -> str:
+    def metric_type_validator(cls, metric_type: str) -> str:
         assert metric_type in ['continuous', 'binary', 'ratio'], "metric_type is not in ['continuous', 'binary', 'ratio']"
         return metric_type
 

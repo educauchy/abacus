@@ -1,17 +1,6 @@
 Welcome to ABacus documentation!
 ================================
 
-|PyPI| |PyPI License| |ReadTheDocs| |Python Versions|
-=====================================================
-.. |PyPI| image:: https://img.shields.io/pypi/v/abacus
-    :target: https://pypi.org/project/abacus
-.. |PyPI License| image:: https://img.shields.io/pypi/l/abacus.svg
-    :target: https://github.com/educauchy/abacus/blob/main/LICENSE
-.. |ReadTheDocs| image:: https://img.shields.io/readthedocs/abacus.svg
-    :target: https://abacus.readthedocs.io
-.. |Python Versions| image:: https://img.shields.io/pypi/pyversions/abacus.svg
-    :target: https://pypi.org/project/abacus
-
 **ABacus** is a Python library developed for A/B experimentation and testing.
 It includes versatile instruments for different experimentation tasks like
 experiment design, sample size determination, results evaluation, visualisation and reporting.

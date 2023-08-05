@@ -42,12 +42,12 @@ class SplitBuilderParams:
 
     @validator("alpha", always=True, allow_reuse=True)
     @classmethod
-    def alpha_splitter_validator(cls, alpha: float):
+    def alpha_validator(cls, alpha: float):
         assert 0 < alpha < 1
         return alpha
 
     @validator("metric_type", always=True, allow_reuse=True)
     @classmethod
-    def metric_type_splitter_validator(cls, metric_type: str) -> str:
+    def metric_type_validator(cls, metric_type: str) -> str:
         assert metric_type in ['continuous', 'binary', 'ratio'], "metric_type is not in ['continuous', 'binary', 'ratio']"
         return metric_type

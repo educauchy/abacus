@@ -18,10 +18,10 @@ prepilot, sample size determination, results calculation, visualisations and rep
 
 You can use **pip** to install **ABacus** and use it for your projects:
 ```shell
-pip install abacus
+pip install kolmogorov-abacus
 ```
 
-Note the requirement of Python 3.7+.
+Note the requirement of Python 3.11+.
 
 ## Quick example
 
