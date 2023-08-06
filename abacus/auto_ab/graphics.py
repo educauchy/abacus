@@ -3,33 +3,36 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from abacus.auto_ab.params import ABTestParams
+from abacus.types import ArrayNumType
 
 
 class Graphics:
+    """Illustration of an experiment.
+
+    - As it is easier to apply plotting directrly to experiment, all methods should be called on ``ABTest`` class instance.
+    - Experiment's plot is based on metric type.
+
+    Example:
+
+    .. code-block:: python
+
+        from abacus.auto_ab.abtest import ABTest
+        from abacus.auto_ab.params import ABTestParams, DataParams, HypothesisParams
+
+        data_params = DataParams(...)
+        hypothesis_params = HypothesisParams(...)
+        ab_params = ABTestParams(data_params, hypothesis_params)
+
+        df = pd.read_csv('data.csv')
+        ab_test = ABTest(df, ab_params)
+        ab_test.plot()
+    """
     def __init__(self) -> None:
         pass
 
     @classmethod
-    def plot_simulation_matrix(cls, log_path: str) -> None:
-        """Plot log of simulation matrix.
-
-        Axes of a matrix: ``split rate`` and ``increment``.
-        Cell value: share of significant simulations.
-
-        Args:
-            log_path (str): Path to log file in .csv format.
-        """
-        df = pd.read_csv(log_path)
-        df_pivot = df.pivot(index='split_rate', columns='increment', values='pval_sign_share')
-        plt.figure(figsize=(15, 8))
-        plt.title('Simulation log')
-        sns.heatmap(df_pivot, cmap='Greens', annot=True)
-        plt.show()
-        plt.close()
-
-    @classmethod
-    def plot_solid_experiment(cls, params: ABTestParams) -> None:
-        """Plot distributions of means in experiment groups.
+    def plot_continuous_experiment(cls, params: ABTestParams) -> None:
+        """Plot distributions of continuous metric and actual experiment metric.
 
         Args:
             params (ABTestParams): Parameters of the experiment.
@@ -60,7 +63,7 @@ class Graphics:
 
     @classmethod
     def plot_bootstrap_confint(cls,
-                               x: np.ndarray,
+                               x: ArrayNumType,
                                params: ABTestParams) -> None:
         """Plot bootstrapped metric of an experiment with its confidence
         interval and zero value.
@@ -117,6 +120,3 @@ class Graphics:
             ax.annotate('{:.1f}%'.format(shares[i]), (x, y), ha='center')
         plt.show()
         plt.close()
-
-if __name__ == '__main__':
-    Graphics.plot_binary_experiment()

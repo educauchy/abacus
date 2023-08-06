@@ -16,12 +16,18 @@ prepilot, sample size determination, results calculation, visualisations and rep
 
 ## Installation
 
-You can use **pip** to install **ABacus** and use it for your projects:
+You can use **pip** to install **ABacus** from Github and use it for your projects:
 ```shell
-pip install abacus
+pip install pip+https://github.com/kolmogorov-lab/abacus
 ```
 
-Note the requirement of Python 3.7+.
+Later the package will be published in **PyPI** and will be able to be installed with
+```shell
+pip install kolmogorov-abacus
+```
+
+
+Note the requirement of Python 3.11+.
 
 ## Quick example
 
@@ -48,7 +54,7 @@ The result of code execution is the following:
 
 ## Documentation and Examples
 
-Detailed [documentation](https://github.com/educauchy/abacus/tree/main/examples>) and [examples](https://github.com/educauchy/abacus/tree/main/examples>) are available for your usage.
+Detailed [documentation](https://github.com/kolmogorov-lab/abacus/tree/main/examples>) and [examples](https://github.com/kolmogorov-lab/abacus/tree/main/examples>) are available for your usage.
 
 ## Communication
 

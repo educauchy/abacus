@@ -26,7 +26,6 @@ ABTest
     ABTest.test_chisquare
     ABTest.test_delta_ratio
     ABTest.test_mannwhitney
-    ABTest.test_strat_confint
     ABTest.test_taylor_ratio
     ABTest.test_welch
     ABTest.test_z_proportions
@@ -34,9 +33,9 @@ ABTest
 .. autofunction:: abacus.auto_ab.ABTest.__bucketize
 .. autofunction:: abacus.auto_ab.ABTest.__check_required_columns
 .. autofunction:: abacus.auto_ab.ABTest.__get_group
-.. autofunction:: abacus.auto_ab.ABTest._delta_params
-.. autofunction:: abacus.auto_ab.ABTest._manual_ttest
-.. autofunction:: abacus.auto_ab.ABTest._taylor_params
+.. autofunction:: abacus.auto_ab.ABTest.__delta_params
+.. autofunction:: abacus.auto_ab.ABTest.__manual_ttest
+.. autofunction:: abacus.auto_ab.ABTest.__taylor_params
 
 .. autofunction:: abacus.auto_ab.ABTest.bucketing
 .. autofunction:: abacus.auto_ab.ABTest.cupac
@@ -52,10 +51,11 @@ ABTest
 .. autofunction:: abacus.auto_ab.ABTest.test_chisquare
 .. autofunction:: abacus.auto_ab.ABTest.test_delta_ratio
 .. autofunction:: abacus.auto_ab.ABTest.test_mannwhitney
-.. autofunction:: abacus.auto_ab.ABTest.test_strat_confint
 .. autofunction:: abacus.auto_ab.ABTest.test_taylor_ratio
 .. autofunction:: abacus.auto_ab.ABTest.test_welch
 .. autofunction:: abacus.auto_ab.ABTest.test_z_proportions
+
+|
 
 VarianceReduction
 -----------------
@@ -67,15 +67,18 @@ VarianceReduction
 .. autofunction:: abacus.auto_ab.VarianceReduction.cuped
 .. autofunction:: abacus.auto_ab.VarianceReduction.cupac
 
+|
+
 Graphics
 --------
 
 .. autoclass:: abacus.auto_ab.Graphics
 
-.. autofunction:: abacus.auto_ab.Graphics.plot_simulation_matrix
-.. autofunction:: abacus.auto_ab.Graphics.plot_median_experiment
-.. autofunction:: abacus.auto_ab.Graphics.plot_mean_experiment
+.. autofunction:: abacus.auto_ab.Graphics.plot_continuous_experiment
+.. autofunction:: abacus.auto_ab.Graphics.plot_binary_experiment
 .. autofunction:: abacus.auto_ab.Graphics.plot_bootstrap_confint
+
+|
 
 Params
 ------
@@ -83,11 +86,3 @@ Params
 .. autoclass:: abacus.auto_ab.DataParams
 .. autoclass:: abacus.auto_ab.HypothesisParams
 .. autoclass:: abacus.auto_ab.ABTestParams
-
-ParallelExperiments
--------------------
-
-.. autoclass:: abacus.auto_ab.ParallelExperiments
-
-.. autofunction:: abacus.auto_ab.ParallelExperiments._modulo
-.. autofunction:: abacus.auto_ab.ParallelExperiments._hashing

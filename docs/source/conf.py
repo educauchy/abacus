@@ -12,6 +12,7 @@ import sys
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+
 # -- Path setup --------------------------------------------------------------
 
 sys.path.insert(0, os.path.abspath("../../"))
@@ -21,15 +22,16 @@ sys.path.insert(0, os.path.abspath("../../"))
 
 project = "ABacus"
 copyright = """
-2023 Glowbyte
+2023 Data Sapience
 """
-author = "Glowbyte. Advanced Analytics team"
+author = "Data Sapience. Advanced Analytics team"
 
 # The full version, including alpha/beta/rc tags
 # from abacus import __version__  # noqa
-#
-# release = __version__
-# version = __version__
+
+release = '0.0.1'
+version = '0.0.1'
+
 
 # -- General configuration ---------------------------------------------------
 
@@ -69,9 +71,9 @@ html_theme_options = {"display_version": True, "logo_only": True}
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
-html_css_files = ["css/style.css"]
-html_logo = "_static/abacus.png"
+# html_static_path = ["_static"]
+# html_css_files = ["css/style.css"]
+# html_logo = "_static/abacus.png"
 
-# Custome
+# Custom
 autosummary_generate = True

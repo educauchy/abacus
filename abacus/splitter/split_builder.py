@@ -17,7 +17,10 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 class SplitBuilder:
-    def __init__(self, 
+    """Builds stratification split for DataFrame.
+    """
+
+    def __init__(self,
                  split_data: pd.DataFrame, 
                  params: SplitBuilderParams):
         """Builds stratification split for DataFrame.
@@ -68,7 +71,7 @@ class SplitBuilder:
         stratas_freq = stratas_freq[stratas_freq >= self.params.strata_outliers_frac].index
 
         clean_df = df[df[self.params.main_strata_col].isin(stratas_freq)]
-
+        
         main_strata = (clean_df[self.params.main_strata_col].astype(str) +
                     clean_df.groupby(self.params.main_strata_col)[self.params.split_metric_col]
                         .apply(lambda x: pd.qcut(x, 
@@ -76,6 +79,7 @@ class SplitBuilder:
                                                 labels=range(self.params.n_bins))
                                                 ).astype(str)
                     )
+        
         clean_df = clean_df.assign(strata=main_strata)
         if len(self.params.cols)>0:
             additional_strata = (clean_df.groupby("strata", as_index=False)
@@ -151,12 +155,12 @@ class SplitBuilder:
         return split_df
 
     def _check_groups(self, 
-                    df_with_groups:pd.DataFrame,
-                    control_name:str, 
-                    target_groups_names: List[str]):
+                    df_with_groups: pd.DataFrame,
+                    control_name: str,
+                    target_groups_names: List[str],
+                    metric_type: str):
         tests_results = {}
         check_flag = 1
-
         for group in target_groups_names:
             hypothesis_params = HypothesisParams(alpha=self.params.alpha)
             for column in self.params.cols + self.params.cat_cols :
@@ -169,9 +173,9 @@ class SplitBuilder:
                 ab_params = ABTestParams(data_params, hypothesis_params)
                 ab_test = ABTest(df_with_groups, ab_params)
 
-                if column in self.params.cols: 
+                if metric_type == 'continuous':
                     test_result = ab_test.test_welch()
-                else:
+                elif metric_type == 'binary':
                     test_result = ab_test.test_z_proportions()
                 tests_results[column] = test_result['p-value'].round(4)
 
@@ -197,7 +201,10 @@ class SplitBuilder:
             groups_maped = self._map_stratified_samples(df_with_strata_col)
             target_groups = groups_maped["group_name"].unique().tolist()
             target_groups.remove(SplitBuilderParams.control_group_name)
-            check_flag = self._check_groups(groups_maped, SplitBuilderParams.control_group_name, target_groups)
+            check_flag = self._check_groups(groups_maped,
+                                            SplitBuilderParams.control_group_name,
+                                            target_groups,
+                                            SplitBuilderParams.metric_type)
 
             if check_flag:
                 return groups_maped
@@ -207,6 +214,11 @@ class SplitBuilder:
     
 
     def collect(self) -> pd.DataFrame:
+        """Calculated splits for init dataframe
+.
+        Returns:
+            pandas.DataFrame: DataFrame with split.
+        """
         if len(self.split_data) == 0:
             return self.split_data
 
