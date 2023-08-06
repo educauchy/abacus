@@ -176,14 +176,14 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
                             )
                             experiment_res = self._calc_experiment_grid_cell(one_split_guests, 
                                                                              experiment_params)
-                            beta_scores = beta_scores.append(experiment_res)
+                            beta_scores = pd.concat([beta_scores, experiment_res], axis=0)
 
                         calculated_experiments = ((beta_scores["split_rate"] == group_size) &
                                                        (beta_scores["metric"] == metric_name) &
                                                        (beta_scores["Effect"] == inject))
                         res_inject_agg = self._beta_score_calculation(beta_scores[calculated_experiments])
-                        res_agg = res_agg.append(res_inject_agg)
-                        # check if beta score higher then min_beta
+                        res_agg = pd.concat([res_agg, res_inject_agg], axis=0)
+                        # check if beta score higher than min_beta
                         if(res_inject_agg["beta"].values >= round(self.experiment_params.min_beta_score,
                                                            self._number_of_decimals)) and not found_min_inject_flg:
                             max_found_inject_ind = sorted(self.experiment_params.injects, reverse=True).index(inject)
@@ -259,7 +259,7 @@ class MdeResearchBuilder(AbstractMdeResearchBuilder):
                     )
                     experiment = self._calc_experiment_grid_cell(one_split_guests, 
                                                                  experiment_params)
-                    alpha_scores = alpha_scores.append(experiment)
+                    alpha_scores = pd.concat([alpha_scores, experiment], axis=0)
 
         res_agg = (alpha_scores.groupby(by=["metric", "split_rate"])
                    .agg(sum=("effect_significance", sum),

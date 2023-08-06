@@ -112,7 +112,7 @@ class Graphics:
         shares = [ctrl_not_conv_share, treat_not_conv_share, ctrl_conv_share, treat_conv_share]
 
         plt.figure(figsize=(20, 12), dpi=300)
-        ax = sns.barplot(data=df, x="Experiment group", y="Number of observations", hue='is converted')
+        ax = sns.barplot(data=df, x='Experiment group', y='Number of observations', hue='is converted')
         patches = ax.patches
         for i in range(len(patches)):
             x = patches[i].get_x() + patches[i].get_width() / 2
