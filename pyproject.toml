@@ -37,8 +37,5 @@ Ecosystem = "https://kolmogorov.ai/"
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 
-[tool.setuptools]
-package-dir = {"" = "abacus"}
-
 [tool.setuptools.packages.find]
-where = ["abacus"]
+where = ["."]
