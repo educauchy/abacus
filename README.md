@@ -4,6 +4,14 @@
 It includes versatile instruments for different experimentation tasks like
 prepilot, sample size determination, results calculation, visualisations and reporting.
 
+---
+
+# Important
+
+Repository moved to the new address: [Kolmogorov Lab - ABacus](https://github.com/kolmogorov-lab/abacus).
+
+---
+
 ## Important features
 
 * Experiment design: type I and II errors, effect size, sample size simulations.
